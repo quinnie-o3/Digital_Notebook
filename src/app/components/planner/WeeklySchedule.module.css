@@ -1,0 +1,106 @@
+@reference "../../../styles/index.css";
+
+.root {
+  @apply flex h-full flex-col p-3 md:p-4;
+  background:
+    radial-gradient(circle at top, rgba(255, 227, 186, 0.65), transparent 38%),
+    linear-gradient(180deg, #fdf9f0 0%, #f7efe2 100%);
+}
+
+.toolbar {
+  @apply mb-4 flex flex-col gap-4 rounded-[28px] border border-amber-200/70 bg-white/70 p-4 shadow-sm backdrop-blur;
+}
+
+.toolbarRow {
+  @apply flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between;
+}
+
+.eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.2em] text-amber-700;
+}
+
+.title {
+  @apply mt-2 text-2xl font-semibold text-slate-900;
+}
+
+.description {
+  @apply mt-2 max-w-2xl text-sm text-slate-600;
+}
+
+.actions {
+  @apply flex flex-wrap gap-2;
+}
+
+.importButton {
+  @apply border-amber-300 bg-white/85 text-amber-900 hover:bg-amber-50;
+}
+
+.addButton {
+  @apply bg-slate-900 text-white hover:bg-slate-800;
+}
+
+.gridShell {
+  @apply flex-1 overflow-auto rounded-[28px] border border-white/60 bg-white/65 p-3 shadow-inner;
+}
+
+.grid {
+  @apply relative grid min-w-[980px] gap-2;
+  isolation: isolate;
+}
+
+.stickyPeriod {
+  @apply sticky left-0 top-0 z-40 rounded-2xl bg-slate-900 px-3 py-3 text-center text-sm font-semibold text-white shadow-sm;
+}
+
+.stickyDay {
+  @apply sticky top-0 z-30 rounded-2xl bg-white/95 px-3 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm backdrop-blur;
+}
+
+.timeCell {
+  @apply sticky left-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-white/95 px-2 py-3 text-center shadow-sm backdrop-blur;
+}
+
+.timeLabel {
+  @apply text-sm font-semibold text-slate-800;
+}
+
+.timeRange {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.subjectCard {
+  @apply relative z-10 flex h-full cursor-pointer flex-col gap-3 overflow-hidden rounded-[24px] border p-4 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+  min-height: 100%;
+}
+
+.subjectCardActive {
+  @apply ring-2 ring-slate-900/70 ring-offset-2 ring-offset-[#f7efe2];
+}
+
+.subjectCardTopBar {
+  @apply absolute inset-x-0 top-0 h-2 bg-white/40;
+}
+
+.subjectTitle {
+  @apply pr-12 text-sm font-semibold text-slate-900;
+}
+
+.subjectMeta {
+  @apply space-y-1 text-xs text-slate-700;
+}
+
+.subjectFooter {
+  @apply mt-auto flex items-end justify-between gap-2;
+}
+
+.subjectSource {
+  @apply text-[11px] text-slate-700/80;
+}
+
+.subjectButton {
+  @apply h-9 w-9 rounded-full bg-slate-900 text-white hover:bg-slate-800;
+}
+
+.emptyCell {
+  @apply rounded-2xl border border-dashed border-amber-200 bg-white/40;
+}
