@@ -1,0 +1,102 @@
+@reference "../../../styles/index.css";
+
+.content {
+  @apply max-w-2xl border-0 bg-[#fffaf1] p-0 shadow-2xl;
+}
+
+.panel {
+  @apply rounded-[28px] border border-amber-200/80 p-6;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff6e7 100%);
+}
+
+.header {
+  @apply px-0 pt-0;
+}
+
+.headerRow {
+  @apply mb-3 flex items-center gap-3 text-amber-900;
+}
+
+.iconWrap {
+  @apply rounded-2xl bg-amber-100 p-3;
+}
+
+.description {
+  @apply mt-1 text-amber-800/80;
+}
+
+.body {
+  @apply space-y-4;
+}
+
+.infoBox {
+  @apply rounded-2xl border border-amber-200 bg-white/80 p-4 text-sm text-amber-900;
+}
+
+.infoTitle {
+  @apply mb-2 flex items-center gap-2 font-semibold;
+}
+
+.infoList {
+  @apply ml-5 list-decimal space-y-1 text-amber-900/80;
+}
+
+.field {
+  @apply space-y-2;
+}
+
+.textarea {
+  @apply min-h-[240px] border-amber-200 bg-white font-mono text-sm;
+}
+
+.modeBox {
+  @apply flex items-start gap-3 rounded-2xl border border-amber-200 bg-white/85 p-4;
+}
+
+.checkbox {
+  @apply mt-0.5 border-amber-400;
+}
+
+.modeLabel {
+  @apply text-sm font-semibold text-amber-950;
+}
+
+.modeText {
+  @apply mt-1 text-sm text-amber-900/75;
+}
+
+.previewBox {
+  @apply rounded-2xl border border-dashed border-amber-300 bg-white/60 p-4 text-sm text-amber-950;
+}
+
+.previewTitle {
+  @apply font-semibold;
+}
+
+.previewChips {
+  @apply mt-2 flex flex-wrap gap-2;
+}
+
+.previewChip {
+  @apply rounded-full border border-amber-200 bg-white px-3 py-1 text-xs;
+}
+
+.warnings {
+  @apply mt-3 space-y-1 text-amber-900/80;
+}
+
+.feedback {
+  @apply mt-3 text-rose-700;
+}
+
+.footer {
+  @apply mt-6 px-0 pb-0;
+}
+
+.cancelButton {
+  @apply border-amber-300;
+}
+
+.submitButton {
+  @apply bg-amber-600 text-white hover:bg-amber-700;
+}
