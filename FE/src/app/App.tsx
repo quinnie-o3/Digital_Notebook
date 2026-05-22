@@ -1,5 +1,8 @@
+import { useState } from "react";
+
 import { AddSubjectDialog } from "./components/dialogs/AddSubjectDialog";
 import { ImportUITScheduleDialog } from "./components/dialogs/ImportUITScheduleDialog";
+import { UserProfileDialog } from "./components/dialogs/UserProfileDialog";
 import { NotebookSheet } from "./components/planner/NotebookSheet";
 import { PlannerHeader } from "./components/planner/PlannerHeader";
 import { WeeklySchedule } from "./components/planner/WeeklySchedule";
@@ -8,11 +11,15 @@ import styles from "./App.module.css";
 
 export default function App() {
   const planner = usePlannerState();
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
 
   return (
     <div className={styles.page}>
       <div className={styles.layout}>
-        <PlannerHeader importFeedback={planner.importFeedback} />
+        <PlannerHeader
+          importFeedback={planner.importFeedback}
+          onOpenUserProfile={() => setIsUserProfileOpen(true)}
+        />
 
         <main className={styles.main}>
           <WeeklySchedule
@@ -44,6 +51,8 @@ export default function App() {
         assignment={planner.currentAssignment}
         onSaveAssignment={planner.handleSaveAssignment}
       />
+
+      <UserProfileDialog open={isUserProfileOpen} onOpenChange={setIsUserProfileOpen} />
     </div>
   );
 }

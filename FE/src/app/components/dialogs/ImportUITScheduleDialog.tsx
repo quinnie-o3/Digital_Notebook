@@ -21,7 +21,7 @@ type ImportMode = "replace" | "append";
 interface ImportUITScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImport: (result: UITScheduleImportResult, mode: ImportMode) => void;
+  onImport: (result: UITScheduleImportResult, mode: ImportMode, sourceText: string) => void;
 }
 
 export function ImportUITScheduleDialog({
@@ -54,7 +54,7 @@ export function ImportUITScheduleDialog({
       return;
     }
 
-    onImport(result, replaceExisting ? "replace" : "append");
+    onImport(result, replaceExisting ? "replace" : "append", rawText);
     handleClose(false);
   };
 

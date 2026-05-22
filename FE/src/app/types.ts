@@ -26,3 +26,13 @@ export interface HomeworkItem {
   text: string;
   completed: boolean;
 }
+
+export interface UserProfile {
+  userId: number;
+  profileId?: number;
+  name?: string;
+  fullName?: string;
+  email: string;
+  passwordHash: string;
+  avatarUrl?: string | null;
+}

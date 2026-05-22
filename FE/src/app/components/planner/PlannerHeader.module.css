@@ -4,6 +4,10 @@
   @apply mb-2 rounded-[28px] border border-white/60 bg-white/70 p-3 shadow-xl backdrop-blur md:p-4;
 }
 
+.topBar {
+  @apply mb-3 flex items-center justify-between gap-3;
+}
+
 .row {
   @apply flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between;
 }
@@ -16,8 +20,12 @@
   @apply text-xs font-semibold uppercase tracking-[0.18em];
 }
 
+.profileButton {
+  @apply size-10 rounded-full border-amber-200 bg-white text-amber-900 shadow-sm hover:bg-amber-50;
+}
+
 .title {
-  @apply mt-2 text-2xl font-semibold leading-tight text-slate-900 md:text-3xl;
+  @apply text-2xl font-semibold leading-tight text-slate-900 md:text-3xl;
 }
 
 .description {

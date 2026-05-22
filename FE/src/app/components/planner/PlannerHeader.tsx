@@ -1,21 +1,35 @@
-import { BookOpen, NotebookPen } from "lucide-react";
+import { BookOpen, NotebookPen, UserRound } from "lucide-react";
 
+import { Button } from "../ui/button";
 import styles from "./PlannerHeader.module.css";
 
 interface PlannerHeaderProps {
   importFeedback: string | null;
+  onOpenUserProfile: () => void;
 }
 
-export function PlannerHeader({ importFeedback }: PlannerHeaderProps) {
+export function PlannerHeader({ importFeedback, onOpenUserProfile }: PlannerHeaderProps) {
   return (
     <header className={styles.header}>
+      <div className={styles.topBar}>
+        <div className={styles.badge}>
+          <BookOpen className="size-4" />
+          <span className={styles.badgeText}>Digital notebook planner</span>
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className={styles.profileButton}
+          onClick={onOpenUserProfile}
+          aria-label="Open user information"
+        >
+          <UserRound className="size-5" />
+        </Button>
+      </div>
+
       <div className={styles.row}>
         <div>
-          <div className={styles.badge}>
-            <BookOpen className="size-4" />
-            <span className={styles.badgeText}>Digital notebook planner</span>
-          </div>
-
           <h1 className={styles.title}>
             Keep the timetable clean, open notes only when you need them.
           </h1>

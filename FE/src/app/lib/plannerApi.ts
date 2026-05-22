@@ -1,0 +1,380 @@
+import { Assignment, HomeworkItem, Subject } from "../types";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+
+interface ApiUser {
+  userId: number;
+}
+
+interface ApiTimetable {
+  timetableId: number;
+  userId: number;
+  name?: string | null;
+  active?: number | null;
+}
+
+interface ApiSubject {
+  subjectId: number;
+  userId: number;
+  subjectName: string;
+  subjectCode?: string | null;
+  colorCode?: string | null;
+}
+
+interface ApiClass {
+  classId: number;
+  timetableId: number;
+  subjectId: number;
+  teacherName?: string | null;
+  defaultRoom?: string | null;
+  createdType?: string | null;
+}
+
+interface ApiClassSession {
+  sessionId: number;
+  classId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  room?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+interface ApiLessonNote {
+  noteId: number;
+  sessionId: number;
+  noteDate?: string | null;
+  lessonSummary?: string | null;
+  reviewNotes?: string | null;
+}
+
+interface ApiTask {
+  taskId: number;
+  noteId?: number | null;
+  sessionId: number;
+  title: string;
+  description?: string | null;
+  deadline?: string | null;
+  status: "todo" | "doing" | "done" | "overdue";
+  priority: "low" | "normal" | "high";
+}
+
+interface ApiImportFile {
+  importId: number;
+  userId: number;
+  fileName: string;
+  fileType?: string | null;
+  fileUrl?: string | null;
+  status: "uploaded" | "processing" | "completed" | "failed";
+  errorMessage?: string | null;
+}
+
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+    ...init,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function deleteRequest(path: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Delete failed: ${response.status}`);
+  }
+}
+
+function toSubject(session: ApiClassSession, classItem: ApiClass, subject: ApiSubject): Subject {
+  return {
+    id: String(session.sessionId),
+    name: subject.subjectName,
+    color: subject.colorCode || "#D8E8FF",
+    day: Math.max(0, session.dayOfWeek - 1),
+    startTime: session.startTime,
+    endTime: session.endTime,
+    room: session.room || classItem.defaultRoom || undefined,
+    courseCode: subject.subjectCode || undefined,
+    source: classItem.createdType === "import" ? "uit" : "manual",
+    startDate: session.startDate?.slice(0, 10),
+    endDate: session.endDate?.slice(0, 10),
+  };
+}
+
+function toHomeworkItem(task: ApiTask): HomeworkItem {
+  return {
+    id: String(task.taskId),
+    text: task.title,
+    completed: task.status === "done",
+  };
+}
+
+function toAssignment(session: ApiClassSession, notes: ApiLessonNote[], tasks: ApiTask[]): Assignment {
+  const note = notes[0];
+  const sessionTasks = tasks.filter((task) => task.sessionId === session.sessionId);
+
+  return {
+    id: note ? String(note.noteId) : `assignment-${session.sessionId}`,
+    subjectId: String(session.sessionId),
+    lessonNotes: note?.lessonSummary || "",
+    homework: sessionTasks.map(toHomeworkItem),
+    deadline: sessionTasks.find((task) => task.deadline)?.deadline?.slice(0, 10) || "",
+  };
+}
+
+async function getDefaultUserId() {
+  const users = await requestJson<ApiUser[]>("/api/app-users");
+  const firstUser = users[0];
+
+  if (!firstUser) {
+    throw new Error("No app_users row found.");
+  }
+
+  return firstUser.userId;
+}
+
+async function getDefaultTimetable(userId: number) {
+  const timetables = await requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`);
+  const activeTimetable = timetables.find((timetable) => timetable.active === 1) || timetables[0];
+
+  if (activeTimetable) {
+    return activeTimetable;
+  }
+
+  return requestJson<ApiTimetable>("/api/timetables", {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      name: "My Timetable",
+      active: 1,
+    }),
+  });
+}
+
+export async function getPlannerStateFromOracle() {
+  const [subjects, classes, sessions, lessonNotes, tasks] = await Promise.all([
+    requestJson<ApiSubject[]>("/api/subjects"),
+    requestJson<ApiClass[]>("/api/classes"),
+    requestJson<ApiClassSession[]>("/api/class-sessions"),
+    requestJson<ApiLessonNote[]>("/api/lesson-notes"),
+    requestJson<ApiTask[]>("/api/tasks"),
+  ]);
+
+  const subjectsById = new Map(subjects.map((subject) => [subject.subjectId, subject]));
+  const classesById = new Map(classes.map((classItem) => [classItem.classId, classItem]));
+  const visibleSessions = sessions.filter((session) => {
+    const classItem = classesById.get(session.classId);
+    return classItem && subjectsById.has(classItem.subjectId);
+  });
+
+  return {
+    subjects: visibleSessions.map((session) => {
+      const classItem = classesById.get(session.classId)!;
+      return toSubject(session, classItem, subjectsById.get(classItem.subjectId)!);
+    }),
+    assignments: visibleSessions.map((session) =>
+      toAssignment(
+        session,
+        lessonNotes.filter((note) => note.sessionId === session.sessionId),
+        tasks,
+      ),
+    ),
+  };
+}
+
+export async function createCourseInOracle(subjectData: Omit<Subject, "id">) {
+  const userId = await getDefaultUserId();
+  const timetable = await getDefaultTimetable(userId);
+  const subject = await requestJson<ApiSubject>("/api/subjects", {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      subjectName: subjectData.name,
+      subjectCode: subjectData.courseCode,
+      colorCode: subjectData.color,
+    }),
+  });
+  const classItem = await requestJson<ApiClass>("/api/classes", {
+    method: "POST",
+    body: JSON.stringify({
+      timetableId: timetable.timetableId,
+      subjectId: subject.subjectId,
+      defaultRoom: subjectData.room,
+      createdType: subjectData.source === "uit" ? "import" : "manual",
+    }),
+  });
+  const session = await requestJson<ApiClassSession>("/api/class-sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      classId: classItem.classId,
+      dayOfWeek: subjectData.day + 1,
+      startTime: subjectData.startTime,
+      endTime: subjectData.endTime,
+      room: subjectData.room,
+      startDate: subjectData.startDate,
+      endDate: subjectData.endDate,
+    }),
+  });
+
+  return toSubject(session, classItem, subject);
+}
+
+async function deleteCurrentScheduleForUser(userId: number) {
+  const [userSubjects, timetables] = await Promise.all([
+    requestJson<ApiSubject[]>(`/api/subjects/user/${userId}`),
+    requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`),
+  ]);
+
+  await Promise.all(userSubjects.map((subject) => deleteRequest(`/api/subjects/${subject.subjectId}`)));
+  await Promise.all(timetables.map((timetable) => deleteRequest(`/api/timetables/${timetable.timetableId}`)));
+}
+
+async function createImportRecord(userId: number, sourceText: string) {
+  return requestJson<ApiImportFile>("/api/import-files", {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      fileName: "UIT Student pasted schedule",
+      fileType: "text/plain",
+      fileUrl: null,
+      status: "processing",
+      errorMessage: sourceText ? null : "No raw source text captured.",
+    }),
+  });
+}
+
+async function completeImportRecord(importFile: ApiImportFile, status: "completed" | "failed", errorMessage?: string) {
+  return requestJson<ApiImportFile>(`/api/import-files/${importFile.importId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      ...importFile,
+      status,
+      errorMessage: errorMessage || null,
+    }),
+  });
+}
+
+async function createImportItems(importId: number, subjects: Omit<Subject, "id">[]) {
+  await Promise.all(
+    subjects.map((subject) =>
+      requestJson("/api/import-items", {
+        method: "POST",
+        body: JSON.stringify({
+          importId,
+          rawText: [subject.courseCode, subject.name, subject.room, subject.startTime, subject.endTime]
+            .filter(Boolean)
+            .join(" | "),
+          subjectName: subject.name,
+          dayOfWeek: subject.day + 1,
+          startTime: subject.startTime,
+          endTime: subject.endTime,
+          room: subject.room,
+          confidenceScore: 100,
+          status: "accepted",
+        }),
+      }),
+    ),
+  );
+}
+
+export async function importScheduleToOracle(
+  subjects: Omit<Subject, "id">[],
+  mode: "replace" | "append",
+  sourceText: string,
+) {
+  const userId = await getDefaultUserId();
+  const importFile = await createImportRecord(userId, sourceText);
+
+  try {
+    if (mode === "replace") {
+      await deleteCurrentScheduleForUser(userId);
+    }
+
+    await getDefaultTimetable(userId);
+    await createImportItems(importFile.importId, subjects);
+    await Promise.all(
+      subjects.map((subject) =>
+        createCourseInOracle({
+          ...subject,
+          source: "uit",
+        }),
+      ),
+    );
+    await completeImportRecord(importFile, "completed");
+  } catch (error) {
+    await completeImportRecord(
+      importFile,
+      "failed",
+      error instanceof Error ? error.message : "Import failed.",
+    );
+    throw error;
+  }
+}
+
+export async function saveAssignmentToOracle(assignment: Assignment) {
+  const sessionId = Number(assignment.subjectId);
+  const existingNotes = await requestJson<ApiLessonNote[]>(`/api/lesson-notes/session/${sessionId}`);
+  const existingNote = existingNotes[0];
+  const noteBody = {
+    sessionId,
+    lessonSummary: assignment.lessonNotes,
+    reviewNotes: null,
+  };
+  const savedNote = await requestJson<ApiLessonNote>(
+    existingNote ? `/api/lesson-notes/${existingNote.noteId}` : "/api/lesson-notes",
+    {
+      method: existingNote ? "PUT" : "POST",
+      body: JSON.stringify({
+        ...existingNote,
+        ...noteBody,
+      }),
+    },
+  );
+  const existingTasks = await requestJson<ApiTask[]>(`/api/tasks/session/${sessionId}`);
+  const keptTaskIds = new Set(
+    assignment.homework.map((item) => Number(item.id)).filter((id) => Number.isInteger(id)),
+  );
+
+  await Promise.all(
+    existingTasks
+      .filter((task) => !keptTaskIds.has(task.taskId))
+      .map((task) =>
+        fetch(`${API_BASE_URL}/api/tasks/${task.taskId}`, {
+          method: "DELETE",
+        }),
+      ),
+  );
+
+  const savedTasks = await Promise.all(
+    assignment.homework.map((item) => {
+      const taskId = Number(item.id);
+      const existingTask = existingTasks.find((task) => task.taskId === taskId);
+
+      return requestJson<ApiTask>(existingTask ? `/api/tasks/${taskId}` : "/api/tasks", {
+        method: existingTask ? "PUT" : "POST",
+        body: JSON.stringify({
+          ...existingTask,
+          noteId: savedNote.noteId,
+          sessionId,
+          title: item.text,
+          deadline: assignment.deadline ? `${assignment.deadline}T00:00:00` : null,
+          status: item.completed ? "done" : "todo",
+          priority: existingTask?.priority || "normal",
+        }),
+      });
+    }),
+  );
+
+  return toAssignment({ sessionId, classId: 0, dayOfWeek: 1, startTime: "", endTime: "" }, [savedNote], savedTasks);
+}

@@ -1,12 +1,12 @@
 package com.uit.studentplanner.repository;
 
-import com.uit.studentplanner.entity.Note;
+import com.uit.studentplanner.entity.LessonNote;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface NoteRepository extends JpaRepository<Note, Long> {
+public interface LessonNoteRepository extends JpaRepository<LessonNote, Long> {
 
-    List<Note> findByCourseId(Long courseId);
+    List<LessonNote> findBySessionId(Long sessionId);
 }

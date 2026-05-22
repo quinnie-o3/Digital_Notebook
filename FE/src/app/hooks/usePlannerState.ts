@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 
-import { getAllAssignments, saveAssignment, saveAssignments } from "../lib/assignmentDatabase";
+import {
+  createCourseInOracle,
+  getPlannerStateFromOracle,
+  importScheduleToOracle,
+  saveAssignmentToOracle,
+} from "../lib/plannerApi";
 import { UITScheduleImportResult } from "../lib/uitSchedule";
 import { Assignment, Subject } from "../types";
 import {
   buildAssignmentsForSubjects,
   createDefaultAssignment,
   loadInitialPlannerState,
-  mergeSubjectsById,
-  STORAGE_KEY,
 } from "../utils/plannerState";
 
 export function usePlannerState() {
@@ -22,43 +25,31 @@ export function usePlannerState() {
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        subjects,
-        assignments,
-      }),
-    );
-  }, [assignments, subjects]);
-
-  useEffect(() => {
     let isCancelled = false;
 
-    const hydrateAssignmentsFromDatabase = async () => {
+    const hydratePlannerFromDatabase = async () => {
       try {
-        const storedAssignments = await getAllAssignments();
+        const databaseState = await getPlannerStateFromOracle();
 
         if (isCancelled) {
           return;
         }
 
-        if (storedAssignments.length === 0) {
-          await saveAssignments(bootstrap.assignments);
-          return;
+        if (databaseState.subjects.length > 0) {
+          setSubjects(databaseState.subjects);
+          setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
         }
-
-        setAssignments(buildAssignmentsForSubjects(bootstrap.subjects, storedAssignments));
       } catch (error) {
-        console.error("Failed to hydrate assignments from IndexedDB.", error);
+        console.error("Failed to hydrate planner data from Oracle.", error);
       }
     };
 
-    void hydrateAssignmentsFromDatabase();
+    void hydratePlannerFromDatabase();
 
     return () => {
       isCancelled = true;
     };
-  }, [bootstrap.assignments, bootstrap.subjects]);
+  }, []);
 
   useEffect(() => {
     if (!selectedSubject) {
@@ -71,27 +62,26 @@ export function usePlannerState() {
     setSelectedSubject(nextSelectedSubject);
   }, [selectedSubject, subjects]);
 
-  const handleAddSubject = (subjectData: Omit<Subject, "id">) => {
-    const newSubject: Subject = {
-      ...subjectData,
-      id: Date.now().toString(),
-      source: "manual",
-    };
+  const handleAddSubject = async (subjectData: Omit<Subject, "id">) => {
+    const newSubject = await createCourseInOracle(subjectData);
 
     setSubjects((previous) => [...previous, newSubject]);
     setAssignments((previous) => [...previous, createDefaultAssignment(newSubject.id)]);
   };
 
   const handleSaveAssignment = async (assignment: Assignment) => {
-    await saveAssignment(assignment);
+    const savedAssignment = await saveAssignmentToOracle(assignment);
+
     setAssignments((previous) => {
-      const hasExistingAssignment = previous.some((item) => item.id === assignment.id);
+      const hasExistingAssignment = previous.some((item) => item.subjectId === savedAssignment.subjectId);
 
       if (!hasExistingAssignment) {
-        return [...previous, assignment];
+        return [...previous, savedAssignment];
       }
 
-      return previous.map((item) => (item.id === assignment.id ? assignment : item));
+      return previous.map((item) =>
+        item.subjectId === savedAssignment.subjectId ? savedAssignment : item,
+      );
     });
   };
 
@@ -103,26 +93,29 @@ export function usePlannerState() {
   const handleImportSchedule = (
     result: UITScheduleImportResult,
     mode: "replace" | "append",
+    sourceText = "",
   ) => {
-    const nextSubjects =
-      mode === "replace"
-        ? result.subjects
-        : mergeSubjectsById([...subjects, ...result.subjects]);
-    const nextAssignments = buildAssignmentsForSubjects(nextSubjects, assignments);
+    void (async () => {
+      await importScheduleToOracle(result.subjects, mode, sourceText);
+      const databaseState = await getPlannerStateFromOracle();
 
-    setSubjects(nextSubjects);
-    setAssignments(nextAssignments);
+      setSubjects(databaseState.subjects);
+      setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
 
-    if (selectedSubject && !nextSubjects.some((subject) => subject.id === selectedSubject.id)) {
-      setSelectedSubject(null);
-      setIsNotebookOpen(false);
-    }
+      if (
+        selectedSubject &&
+        !databaseState.subjects.some((subject) => subject.id === selectedSubject.id)
+      ) {
+        setSelectedSubject(null);
+        setIsNotebookOpen(false);
+      }
 
-    setImportFeedback(
-      result.warnings.length
-        ? `Imported ${result.subjects.length} classes. Note: ${result.warnings.join(" ")}`
-        : `Imported ${result.subjects.length} classes from UIT Student.`,
-    );
+      setImportFeedback(
+        result.warnings.length
+          ? `Imported ${result.subjects.length} classes. Note: ${result.warnings.join(" ")}`
+          : `Imported ${result.subjects.length} classes from UIT Student.`,
+      );
+    })();
   };
 
   const currentAssignment = selectedSubject

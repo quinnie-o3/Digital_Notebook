@@ -13,7 +13,7 @@ import styles from "./AddSubjectDialog.module.css";
 interface AddSubjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddSubject: (subject: Omit<Subject, "id">) => void;
+  onAddSubject: (subject: Omit<Subject, "id">) => void | Promise<void>;
 }
 
 const PASTEL_COLORS = [
@@ -39,12 +39,12 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
     (time) => minutesFromTime(time) > minutesFromTime(startTime),
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       return;
     }
 
-    onAddSubject({
+    await onAddSubject({
       name,
       color,
       day,
