@@ -1,49 +1,43 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "class_sessions")
+@Document(collection = "class_sessions")
 @Data
 public class ClassSession {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "session_id")
     private Long sessionId;
 
-    @Column(name = "class_id", nullable = false)
+    @Field("class_id")
     private Long classId;
 
-    @Column(name = "day_of_week", nullable = false)
+    @Field("day_of_week")
     private Integer dayOfWeek;
 
-    @Column(name = "start_time", nullable = false)
+    @Field("start_time")
     private String startTime;
 
-    @Column(name = "end_time", nullable = false)
+    @Field("end_time")
     private String endTime;
 
-    @Column(name = "room")
+    @Field("room")
     private String room;
 
-    @Column(name = "start_date")
+    @Field("start_date")
     private LocalDate startDate;
 
-    @Column(name = "end_date")
+    @Field("end_date")
     private LocalDate endDate;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

@@ -2,11 +2,11 @@ package com.uit.studentplanner.repository;
 
 import com.uit.studentplanner.entity.ImportItem;
 import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ImportItemRepository extends JpaRepository<ImportItem, Long> {
+public interface ImportItemRepository extends MongoRepository<ImportItem, Long> {
 
     List<ImportItem> findByImportId(Long importId);
 }

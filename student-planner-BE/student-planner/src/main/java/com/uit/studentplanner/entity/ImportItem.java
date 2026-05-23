@@ -1,52 +1,46 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "import_items")
+@Document(collection = "import_items")
 @Data
 public class ImportItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "item_id")
     private Long itemId;
 
-    @Column(name = "import_id", nullable = false)
+    @Field("import_id")
     private Long importId;
 
-    @Column(name = "raw_text")
+    @Field("raw_text")
     private String rawText;
 
-    @Column(name = "subject_name")
+    @Field("subject_name")
     private String subjectName;
 
-    @Column(name = "day_of_week")
+    @Field("day_of_week")
     private Integer dayOfWeek;
 
-    @Column(name = "start_time")
+    @Field("start_time")
     private String startTime;
 
-    @Column(name = "end_time")
+    @Field("end_time")
     private String endTime;
 
-    @Column(name = "room")
+    @Field("room")
     private String room;
 
-    @Column(name = "confidence_score")
+    @Field("confidence_score")
     private BigDecimal confidenceScore;
 
-    @Column(name = "status", nullable = false)
+    @Field("status")
     private String status;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 }

@@ -1,42 +1,36 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "classes")
+@Document(collection = "classes")
 @Data
 public class ClassEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "class_id")
     private Long classId;
 
-    @Column(name = "timetable_id", nullable = false)
+    @Field("timetable_id")
     private Long timetableId;
 
-    @Column(name = "subject_id", nullable = false)
+    @Field("subject_id")
     private Long subjectId;
 
-    @Column(name = "teacher_name")
+    @Field("teacher_name")
     private String teacherName;
 
-    @Column(name = "default_room")
+    @Field("default_room")
     private String defaultRoom;
 
-    @Column(name = "created_type", nullable = false)
+    @Field("created_type")
     private String createdType;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

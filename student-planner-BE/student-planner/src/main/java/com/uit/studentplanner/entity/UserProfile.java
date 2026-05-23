@@ -1,51 +1,47 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "user_profiles")
+@Document(collection = "user_profiles")
 @Data
 public class UserProfile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "profile_id")
     private Long profileId;
 
-    @Column(name = "user_id", nullable = false)
+    @Field("user_id")
     private Long userId;
 
-    @Column(name = "full_name")
+    @Field("full_name")
     private String fullName;
 
-    @Column(name = "student_code", unique = true)
+    @Indexed(unique = true, sparse = true)
+    @Field("student_code")
     private String studentCode;
 
-    @Column(name = "school_name")
+    @Field("school_name")
     private String schoolName;
 
-    @Column(name = "faculty")
+    @Field("faculty")
     private String faculty;
 
-    @Column(name = "major")
+    @Field("major")
     private String major;
 
-    @Column(name = "class_name")
+    @Field("class_name")
     private String className;
 
-    @Column(name = "avatar_url")
+    @Field("avatar_url")
     private String avatarUrl;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

@@ -22,11 +22,60 @@ interface SubjectPlacement {
   rowSpan: number;
 }
 
-function getSubjectPlacement(subject: Subject): SubjectPlacement | null {
+interface ScheduleSlot {
+  label: string;
+  start: string;
+  end: string;
+}
+
+function buildScheduleSlots(subjects: Subject[]): ScheduleSlot[] {
+  if (!subjects.length) {
+    return UIT_PERIOD_SLOTS.map((slot) => ({
+      label: `Period ${slot.period}`,
+      start: slot.start,
+      end: slot.end,
+    }));
+  }
+
+  return Array.from(
+    new Map(
+      subjects.map((subject) => {
+        const defaultPeriod = UIT_PERIOD_SLOTS.find(
+          (slot) => slot.start === subject.startTime && slot.end === subject.endTime,
+        );
+        const key = `${subject.startTime}-${subject.endTime}`;
+
+        return [
+          key,
+          {
+            label: defaultPeriod ? `Period ${defaultPeriod.period}` : "Class time",
+            start: subject.startTime,
+            end: subject.endTime,
+          },
+        ];
+      }),
+    ).values(),
+  ).sort((left, right) => minutesFromTime(left.start) - minutesFromTime(right.start));
+}
+
+function getSubjectPlacement(subject: Subject, scheduleSlots: ScheduleSlot[]): SubjectPlacement | null {
   const startMinutes = minutesFromTime(subject.startTime);
   const endMinutes = minutesFromTime(subject.endTime);
 
-  const rowIndex = UIT_PERIOD_SLOTS.findIndex((slot) => {
+  const exactRowIndex = scheduleSlots.findIndex(
+    (slot) => slot.start === subject.startTime && slot.end === subject.endTime,
+  );
+
+  if (exactRowIndex >= 0) {
+    return {
+      subject,
+      dayIndex: subject.day,
+      rowIndex: exactRowIndex,
+      rowSpan: 1,
+    };
+  }
+
+  const rowIndex = scheduleSlots.findIndex((slot) => {
     const slotStart = minutesFromTime(slot.start);
     const slotEnd = minutesFromTime(slot.end);
     return startMinutes >= slotStart && startMinutes < slotEnd;
@@ -36,7 +85,7 @@ function getSubjectPlacement(subject: Subject): SubjectPlacement | null {
     return null;
   }
 
-  const rowSpan = UIT_PERIOD_SLOTS.filter((slot) => {
+  const rowSpan = scheduleSlots.filter((slot) => {
     const slotStart = minutesFromTime(slot.start);
     const slotEnd = minutesFromTime(slot.end);
     return startMinutes < slotEnd && endMinutes > slotStart;
@@ -61,8 +110,9 @@ export function WeeklySchedule({
   onAddSubject,
   onImportSchedule,
 }: WeeklyScheduleProps) {
+  const scheduleSlots = buildScheduleSlots(subjects);
   const subjectPlacements = subjects
-    .map((subject) => getSubjectPlacement(subject))
+    .map((subject) => getSubjectPlacement(subject, scheduleSlots))
     .filter((placement): placement is SubjectPlacement => Boolean(placement))
     .sort((left, right) => {
       if (left.dayIndex !== right.dayIndex) {
@@ -71,6 +121,12 @@ export function WeeklySchedule({
 
       return left.rowIndex - right.rowIndex;
     });
+  const subjectsByDay = DAY_LABELS.map((day, dayIndex) => ({
+    day,
+    subjects: subjects
+      .filter((subject) => subject.day === dayIndex)
+      .sort((left, right) => minutesFromTime(left.startTime) - minutesFromTime(right.startTime)),
+  }));
 
   const occupiedCells = new Set<string>();
   subjectPlacements.forEach(({ dayIndex, rowIndex, rowSpan }) => {
@@ -81,7 +137,7 @@ export function WeeklySchedule({
 
   const gridStyle = {
     gridTemplateColumns: `minmax(10.5rem, 11.5rem) repeat(${DAY_LABELS.length}, minmax(10rem, 1fr))`,
-    gridTemplateRows: `auto repeat(${UIT_PERIOD_SLOTS.length}, minmax(6rem, auto))`,
+    gridTemplateRows: `auto repeat(${scheduleSlots.length}, minmax(6rem, auto))`,
   };
 
   return (
@@ -113,10 +169,65 @@ export function WeeklySchedule({
         </div>
       </div>
 
+      <div className={styles.mobileSchedule}>
+        {subjectsByDay.map(({ day, subjects: daySubjects }) => (
+          <section key={day} className={styles.mobileDay}>
+            <h3 className={styles.mobileDayTitle}>{day}</h3>
+
+            {daySubjects.length > 0 ? (
+              <div className={styles.mobileCards}>
+                {daySubjects.map((subject) => (
+                  <Card
+                    key={subject.id}
+                    className={cn(
+                      styles.mobileSubjectCard,
+                      activeSubjectId === subject.id && styles.subjectCardActive,
+                    )}
+                    style={{
+                      backgroundColor: subject.color,
+                      borderColor: "rgba(15, 23, 42, 0.08)",
+                    }}
+                    onClick={() => onOpenNotebook(subject)}
+                  >
+                    <div className={styles.subjectCardTopBar} />
+                    <div className={styles.mobileSubjectTop}>
+                      <div>
+                        <div className={styles.subjectTitle}>{subject.name}</div>
+                        <div className={styles.subjectMeta}>
+                          <div>
+                            {subject.startTime} - {subject.endTime}
+                          </div>
+                          {subject.room ? <div>{subject.room}</div> : null}
+                          {subject.courseCode ? <div>{subject.courseCode}</div> : null}
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="icon"
+                        className={styles.subjectButton}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onOpenNotebook(subject);
+                        }}
+                      >
+                        <BookOpen className="size-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.mobileEmpty}>No classes</div>
+            )}
+          </section>
+        ))}
+      </div>
+
       <div className={styles.gridShell}>
         <div className={styles.grid} style={gridStyle}>
           <div className={styles.stickyPeriod} style={{ gridColumn: 1, gridRow: 1 }}>
-            Period
+            Time
           </div>
 
           {DAY_LABELS.map((day, dayIndex) => (
@@ -129,20 +240,20 @@ export function WeeklySchedule({
             </div>
           ))}
 
-          {UIT_PERIOD_SLOTS.map((slot, rowIndex) => (
+          {scheduleSlots.map((slot, rowIndex) => (
             <div
-              key={slot.period}
+              key={`${slot.start}-${slot.end}`}
               className={styles.timeCell}
               style={{ gridColumn: 1, gridRow: rowIndex + 2 }}
             >
-              <div className={styles.timeLabel}>Period {slot.period}</div>
+              <div className={styles.timeLabel}>{slot.label}</div>
               <div className={styles.timeRange}>
                 {slot.start} - {slot.end}
               </div>
             </div>
           ))}
 
-          {UIT_PERIOD_SLOTS.flatMap((_, rowIndex) =>
+          {scheduleSlots.flatMap((_, rowIndex) =>
             DAY_LABELS.map((_, dayIndex) => {
               const cellKey = `${dayIndex}-${rowIndex}`;
 

@@ -1,39 +1,39 @@
 @reference "../../../styles/index.css";
 
 .header {
-  @apply mb-2 rounded-[28px] border border-white/60 bg-white/70 p-3 shadow-xl backdrop-blur md:p-4;
+  @apply mb-2 rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-lg backdrop-blur md:px-4;
 }
 
 .topBar {
-  @apply mb-3 flex items-center justify-between gap-3;
+  @apply mb-2 flex items-center justify-between gap-3;
 }
 
 .row {
-  @apply flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between;
+  @apply flex flex-col gap-2 md:flex-row md:items-center md:justify-between;
 }
 
 .badge {
-  @apply inline-flex items-center gap-2 rounded-full bg-amber-100/80 px-3 py-1.5 text-amber-900;
+  @apply inline-flex min-w-0 items-center gap-2 rounded-full bg-amber-100/80 px-3 py-1.5 text-amber-900;
 }
 
 .badgeText {
-  @apply text-xs font-semibold uppercase tracking-[0.18em];
+  @apply truncate text-[11px] font-semibold uppercase tracking-[0.12em] sm:text-xs sm:tracking-[0.18em];
 }
 
 .profileButton {
-  @apply size-10 rounded-full border-amber-200 bg-white text-amber-900 shadow-sm hover:bg-amber-50;
+  @apply size-9 rounded-full border-amber-200 bg-white text-amber-900 shadow-sm hover:bg-amber-50;
 }
 
 .title {
-  @apply text-2xl font-semibold leading-tight text-slate-900 md:text-3xl;
+  @apply text-base font-semibold leading-tight text-slate-900 sm:text-lg md:text-xl;
 }
 
 .description {
-  @apply mt-1.5 max-w-3xl text-sm leading-5 text-slate-600;
+  @apply hidden max-w-3xl text-xs leading-4 text-slate-600 sm:mt-1 sm:block;
 }
 
 .tipCard {
-  @apply rounded-[20px] border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 shadow-sm;
+  @apply rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-1.5 text-xs text-amber-900 shadow-sm md:rounded-2xl;
 }
 
 .tipTitle {
@@ -41,9 +41,9 @@
 }
 
 .tipText {
-  @apply mt-1 max-w-sm text-xs leading-5 text-amber-900/80;
+  @apply hidden max-w-sm text-xs leading-4 text-amber-900/80 xl:mt-1 xl:block;
 }
 
 .feedback {
-  @apply mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900;
+  @apply mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-900;
 }

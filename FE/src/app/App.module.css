@@ -2,7 +2,7 @@
 
 .page {
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
   background: radial-gradient(
     circle at top,
     rgba(255, 244, 214, 0.95),
@@ -12,9 +12,9 @@
 }
 
 .layout {
-  @apply mx-auto flex h-screen max-w-7xl box-border flex-col px-4 py-3 md:px-6 md:py-4;
+  @apply mx-auto flex min-h-screen w-full max-w-7xl box-border flex-col px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4;
 }
 
 .main {
-  @apply min-h-0 flex-1 overflow-hidden rounded-[36px] border border-white/70 bg-white/45 shadow-2xl backdrop-blur;
+  @apply flex-1 overflow-visible rounded-2xl border border-white/70 bg-white/45 shadow-xl backdrop-blur md:rounded-[28px] lg:rounded-[36px] lg:shadow-2xl;
 }

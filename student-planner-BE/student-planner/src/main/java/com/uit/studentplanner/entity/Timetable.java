@@ -1,46 +1,40 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "timetables")
+@Document(collection = "timetables")
 @Data
 public class Timetable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "timetable_id")
     private Long timetableId;
 
-    @Column(name = "user_id", nullable = false)
+    @Field("user_id")
     private Long userId;
 
-    @Column(name = "name")
+    @Field("name")
     private String name;
 
-    @Column(name = "semester_name")
+    @Field("semester_name")
     private String semesterName;
 
-    @Column(name = "start_date")
+    @Field("start_date")
     private LocalDate startDate;
 
-    @Column(name = "end_date")
+    @Field("end_date")
     private LocalDate endDate;
 
-    @Column(name = "is_active")
+    @Field("is_active")
     private Integer active;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

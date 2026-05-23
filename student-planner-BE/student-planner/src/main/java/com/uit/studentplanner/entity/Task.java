@@ -1,48 +1,42 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "tasks")
+@Document(collection = "tasks")
 @Data
 public class Task {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "task_id")
     private Long taskId;
 
-    @Column(name = "note_id")
+    @Field("note_id")
     private Long noteId;
 
-    @Column(name = "session_id", nullable = false)
+    @Field("session_id")
     private Long sessionId;
 
-    @Column(name = "title", nullable = false)
+    @Field("title")
     private String title;
 
-    @Column(name = "description")
+    @Field("description")
     private String description;
 
-    @Column(name = "deadline")
+    @Field("deadline")
     private LocalDateTime deadline;
 
-    @Column(name = "status", nullable = false)
+    @Field("status")
     private String status;
 
-    @Column(name = "priority", nullable = false)
+    @Field("priority")
     private String priority;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

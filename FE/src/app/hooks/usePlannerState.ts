@@ -96,25 +96,35 @@ export function usePlannerState() {
     sourceText = "",
   ) => {
     void (async () => {
-      await importScheduleToOracle(result.subjects, mode, sourceText);
-      const databaseState = await getPlannerStateFromOracle();
+      try {
+        setImportFeedback("Importing schedule from UIT Student...");
+        await importScheduleToOracle(result.subjects, mode, sourceText);
+        const databaseState = await getPlannerStateFromOracle();
 
-      setSubjects(databaseState.subjects);
-      setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
+        setSubjects(databaseState.subjects);
+        setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
 
-      if (
-        selectedSubject &&
-        !databaseState.subjects.some((subject) => subject.id === selectedSubject.id)
-      ) {
-        setSelectedSubject(null);
-        setIsNotebookOpen(false);
+        if (
+          selectedSubject &&
+          !databaseState.subjects.some((subject) => subject.id === selectedSubject.id)
+        ) {
+          setSelectedSubject(null);
+          setIsNotebookOpen(false);
+        }
+
+        setImportFeedback(
+          result.warnings.length
+            ? `Imported ${result.subjects.length} classes. Note: ${result.warnings.join(" ")}`
+            : `Imported ${result.subjects.length} classes from UIT Student.`,
+        );
+      } catch (error) {
+        console.error("Failed to import schedule.", error);
+        setImportFeedback(
+          error instanceof Error
+            ? `Import failed: ${error.message}`
+            : "Import failed. Please check that the backend is running and try again.",
+        );
       }
-
-      setImportFeedback(
-        result.warnings.length
-          ? `Imported ${result.subjects.length} classes. Note: ${result.warnings.join(" ")}`
-          : `Imported ${result.subjects.length} classes from UIT Student.`,
-      );
     })();
   };
 

@@ -1,42 +1,39 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "app_users")
+@Document(collection = "app_users")
 @Data
 public class AppUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "email", nullable = false, unique = true)
+    @Indexed(unique = true)
+    @Field("email")
     private String email;
 
-    @Column(name = "username", unique = true)
+    @Indexed(unique = true, sparse = true)
+    @Field("username")
     private String username;
 
-    @Column(name = "password_hash", nullable = false)
+    @Field("password_hash")
     private String passwordHash;
 
-    @Column(name = "role", nullable = false)
+    @Field("role")
     private String role;
 
-    @Column(name = "status", nullable = false)
+    @Field("status")
     private String status;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

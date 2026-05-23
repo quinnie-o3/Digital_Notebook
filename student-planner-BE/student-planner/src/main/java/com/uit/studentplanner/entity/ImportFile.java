@@ -1,45 +1,39 @@
 package com.uit.studentplanner.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "import_files")
+@Document(collection = "import_files")
 @Data
 public class ImportFile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "import_id")
     private Long importId;
 
-    @Column(name = "user_id", nullable = false)
+    @Field("user_id")
     private Long userId;
 
-    @Column(name = "file_name", nullable = false)
+    @Field("file_name")
     private String fileName;
 
-    @Column(name = "file_type")
+    @Field("file_type")
     private String fileType;
 
-    @Column(name = "file_url")
+    @Field("file_url")
     private String fileUrl;
 
-    @Column(name = "status", nullable = false)
+    @Field("status")
     private String status;
 
-    @Column(name = "error_message")
+    @Field("error_message")
     private String errorMessage;
 
-    @Column(name = "created_at")
+    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Field("updated_at")
     private LocalDateTime updatedAt;
 }

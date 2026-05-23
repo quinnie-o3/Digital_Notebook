@@ -55,6 +55,7 @@ const HEADER_PATTERNS = {
 const PERIOD_OR_TIME_HINT_PATTERN = /\b(thu|chu nhat|cn|tiet|gio|phong|bd|kt)\b|:\d{2}/i;
 const RANGE_SEPARATOR_PATTERN = "[-\\u2013]";
 const ALT_WEEK_PATTERN = /\b(?:ht1|ht2|cach 2 tuan)\b/i;
+const ICS_DATE_TIME_PATTERN = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/;
 
 export interface UITScheduleImportResult {
   subjects: Subject[];
@@ -101,6 +102,215 @@ function createImportedSubjectId(input: {
     input.endTime.replace(":", ""),
     slugify(input.room || "no-room"),
   ].join("-");
+}
+
+function unescapeIcsText(value: string) {
+  return value
+    .replace(/\\n/gi, " ")
+    .replace(/\\,/g, ",")
+    .replace(/\\;/g, ";")
+    .replace(/\\\\/g, "\\")
+    .trim();
+}
+
+function unfoldIcsLines(text: string) {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .reduce<string[]>((lines, line) => {
+      if (/^[ \t]/.test(line) && lines.length > 0) {
+        lines[lines.length - 1] += line.slice(1);
+      } else if (line.trim()) {
+        lines.push(line.trimEnd());
+      }
+
+      return lines;
+    }, []);
+}
+
+function parseIcsProperty(line: string) {
+  const separatorIndex = line.indexOf(":");
+
+  if (separatorIndex < 0) {
+    return null;
+  }
+
+  const rawName = line.slice(0, separatorIndex);
+  const value = line.slice(separatorIndex + 1);
+  const [name, ...parameters] = rawName.split(";");
+
+  return {
+    name: name.toUpperCase(),
+    parameters: parameters.map((parameter) => parameter.toUpperCase()),
+    value,
+  };
+}
+
+function parseIcsDateTime(value: string) {
+  const match = value.match(ICS_DATE_TIME_PATTERN);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute, second, isUtc] = match;
+  const hasTime = typeof hour === "string";
+
+  if (isUtc && hasTime) {
+    const date = new Date(
+      Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second || "0"),
+      ),
+    );
+
+    return {
+      date,
+      hasTime,
+      dateText: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate(),
+      ).padStart(2, "0")}`,
+      timeText: `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(
+        2,
+        "0",
+      )}`,
+    };
+  }
+
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour || "0"),
+    Number(minute || "0"),
+    Number(second || "0"),
+  );
+
+  return {
+    date,
+    hasTime,
+    dateText: `${year}-${month}-${day}`,
+    timeText: hasTime ? `${hour}:${minute}` : null,
+  };
+}
+
+function getIcsRRuleUntilDate(rrule?: string) {
+  const untilMatch = rrule?.match(/(?:^|;)UNTIL=([^;]+)/i);
+  const parsedUntil = untilMatch ? parseIcsDateTime(untilMatch[1]) : null;
+
+  return parsedUntil?.dateText;
+}
+
+function parseIcsEvents(text: string) {
+  const lines = unfoldIcsLines(text);
+  const events: Record<string, string>[] = [];
+  let currentEvent: Record<string, string> | null = null;
+
+  for (const line of lines) {
+    if (line.toUpperCase() === "BEGIN:VEVENT") {
+      currentEvent = {};
+      continue;
+    }
+
+    if (line.toUpperCase() === "END:VEVENT") {
+      if (currentEvent) {
+        events.push(currentEvent);
+      }
+      currentEvent = null;
+      continue;
+    }
+
+    if (!currentEvent) {
+      continue;
+    }
+
+    const property = parseIcsProperty(line);
+
+    if (!property || currentEvent[property.name]) {
+      continue;
+    }
+
+    currentEvent[property.name] = property.value;
+  }
+
+  return events;
+}
+
+function buildSubjectFromIcsEvent(event: Record<string, string>) {
+  const start = parseIcsDateTime(event.DTSTART || "");
+  const end = parseIcsDateTime(event.DTEND || "");
+
+  if (!start?.hasTime || !end?.hasTime || !start.timeText || !end.timeText) {
+    return null;
+  }
+
+  const summary = normalizeWhitespace(unescapeIcsText(event.SUMMARY || ""));
+
+  if (!summary) {
+    return null;
+  }
+
+  const location = normalizeWhitespace(unescapeIcsText(event.LOCATION || ""));
+  const description = normalizeWhitespace(unescapeIcsText(event.DESCRIPTION || ""));
+  const courseCode = parseCourseCode([summary, description]);
+  const day = (start.date.getDay() + 6) % 7;
+  const name = summary.replace(/^\[[^\]]+\]\s*/, "").replace(/\s+\((LT|TH|BT)\)$/i, "").trim();
+
+  return {
+    id: createImportedSubjectId({
+      name,
+      day,
+      startTime: start.timeText,
+      endTime: end.timeText,
+      room: location,
+      courseCode,
+    }),
+    name,
+    color: pickColor(courseCode || name),
+    day,
+    startTime: start.timeText,
+    endTime: end.timeText,
+    room: location || undefined,
+    courseCode,
+    source: "uit" as const,
+    note: description || undefined,
+    startDate: start.dateText,
+    endDate: getIcsRRuleUntilDate(event.RRULE) || end.dateText,
+  };
+}
+
+function parseIcsScheduleInput(text: string): UITScheduleImportResult {
+  const events = parseIcsEvents(text);
+  const parsedSubjects = events
+    .map(buildSubjectFromIcsEvent)
+    .filter((subject): subject is Subject => Boolean(subject));
+  const uniqueSubjects = Array.from(
+    new Map(parsedSubjects.map((subject) => [subject.id, subject])).values(),
+  );
+  const warnings: string[] = [];
+
+  if (!events.length) {
+    warnings.push("No VEVENT entries were found in the .ics file.");
+  } else if (!uniqueSubjects.length) {
+    warnings.push("The .ics file was read, but no timed class events could be imported.");
+  }
+
+  if (events.some((event) => event.RRULE) && uniqueSubjects.length > 0) {
+    warnings.push("Recurring .ics events were mapped to their weekly day and time.");
+  }
+
+  return {
+    subjects: uniqueSubjects.sort((left, right) => {
+      if (left.day !== right.day) return left.day - right.day;
+      return minutesFromTime(left.startTime) - minutesFromTime(right.startTime);
+    }),
+    warnings,
+  };
 }
 
 function isDateLike(value: string) {
@@ -379,6 +589,10 @@ export function parseUITScheduleInput(input: {
   text: string;
   html?: string | null;
 }): UITScheduleImportResult {
+  if (/BEGIN:VCALENDAR|BEGIN:VEVENT/i.test(input.text)) {
+    return parseIcsScheduleInput(input.text);
+  }
+
   const rowsFromHtml = input.html ? extractRowsFromHtml(input.html) : [];
   const rows = rowsFromHtml.length ? rowsFromHtml : extractRowsFromText(input.text);
   const warnings: string[] = [];

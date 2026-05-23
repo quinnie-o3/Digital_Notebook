@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Info, Upload } from "lucide-react";
+import { FileText, Info, Upload } from "lucide-react";
 
 import { parseUITScheduleInput, UITScheduleImportResult } from "../../lib/uitSchedule";
 import { Button } from "../ui/button";
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import styles from "./ImportUITScheduleDialog.module.css";
@@ -31,6 +32,7 @@ export function ImportUITScheduleDialog({
 }: ImportUITScheduleDialogProps) {
   const [rawText, setRawText] = useState("");
   const [clipboardHtml, setClipboardHtml] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -40,10 +42,39 @@ export function ImportUITScheduleDialog({
     if (!nextOpen) {
       setRawText("");
       setClipboardHtml(null);
+      setSelectedFileName(null);
       setFeedback(null);
     }
 
     onOpenChange(nextOpen);
+  };
+
+  const handleFileChange = (file: File | undefined) => {
+    setFeedback(null);
+    setClipboardHtml(null);
+
+    if (!file) {
+      setSelectedFileName(null);
+      setRawText("");
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".ics") && file.type !== "text/calendar") {
+      setSelectedFileName(null);
+      setFeedback("Please choose a .ics calendar file exported from UIT Student.");
+      return;
+    }
+
+    setSelectedFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawText(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = () => {
+      setFeedback("The .ics file could not be read. Please try exporting it again.");
+    };
+    reader.readAsText(file);
   };
 
   const handleImport = () => {
@@ -70,7 +101,7 @@ export function ImportUITScheduleDialog({
               <div>
                 <DialogTitle>Import from UIT Student</DialogTitle>
                 <DialogDescription className={styles.description}>
-                  Copy your personal schedule table from UIT Student and paste it here.
+                  Upload the .ics timetable file exported from UIT Student.
                 </DialogDescription>
               </div>
             </div>
@@ -85,24 +116,48 @@ export function ImportUITScheduleDialog({
               <ol className={styles.infoList}>
                 <li>Sign in to `student.uit.edu.vn`.</li>
                 <li>Open the timetable page in your UIT Student portal.</li>
-                <li>Select the personal schedule table and copy it.</li>
-                <li>Paste it here with `Ctrl + V`.</li>
+                <li>Download or export the timetable as an `.ics` calendar file.</li>
+                <li>Choose that file below, then import it into this planner.</li>
               </ol>
             </div>
 
             <div className={styles.field}>
-              <Label htmlFor="uit-raw-input">Pasted data from UIT Student</Label>
+              <Label htmlFor="uit-ics-file">UIT Student .ics file</Label>
+              <div className={styles.fileBox}>
+                <div className={styles.fileIcon}>
+                  <FileText className="size-5" />
+                </div>
+                <div className={styles.fileBody}>
+                  <Input
+                    id="uit-ics-file"
+                    type="file"
+                    accept=".ics,text/calendar"
+                    onChange={(event) => handleFileChange(event.target.files?.[0])}
+                    className={styles.fileInput}
+                  />
+                  {selectedFileName ? (
+                    <p className={styles.fileName}>{selectedFileName}</p>
+                  ) : (
+                    <p className={styles.fileHint}>Choose the calendar file downloaded from UIT Student.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <Label htmlFor="uit-raw-input">Raw calendar text fallback</Label>
               <Textarea
                 id="uit-raw-input"
                 value={rawText}
                 onChange={(event) => {
                   setRawText(event.target.value);
+                  setSelectedFileName(null);
                   setFeedback(null);
                 }}
                 onPaste={(event) => {
                   setClipboardHtml(event.clipboardData.getData("text/html") || null);
                 }}
-                placeholder="Paste the full timetable table here..."
+                placeholder="Optional: paste the .ics content here if file upload is not available..."
                 className={styles.textarea}
               />
             </div>

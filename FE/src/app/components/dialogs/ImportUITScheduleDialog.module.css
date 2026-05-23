@@ -1,11 +1,11 @@
 @reference "../../../styles/index.css";
 
 .content {
-  @apply max-w-2xl border-0 bg-[#fffaf1] p-0 shadow-2xl;
+  @apply max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden border-0 bg-[#fffaf1] p-0 shadow-2xl sm:max-h-[calc(100vh-2rem)] sm:w-full;
 }
 
 .panel {
-  @apply rounded-[28px] border border-amber-200/80 p-6;
+  @apply flex max-h-[calc(100vh-1rem)] flex-col rounded-2xl border border-amber-200/80 p-4 sm:max-h-[calc(100vh-2rem)] md:rounded-[28px] md:p-6;
   background: linear-gradient(180deg, #fffdf8 0%, #fff6e7 100%);
 }
 
@@ -14,7 +14,7 @@
 }
 
 .headerRow {
-  @apply mb-3 flex items-center gap-3 text-amber-900;
+  @apply mb-3 flex items-start gap-3 pr-8 text-amber-900 sm:items-center;
 }
 
 .iconWrap {
@@ -26,11 +26,11 @@
 }
 
 .body {
-  @apply space-y-4;
+  @apply min-h-0 flex-1 space-y-4 overflow-y-auto pr-1;
 }
 
 .infoBox {
-  @apply rounded-2xl border border-amber-200 bg-white/80 p-4 text-sm text-amber-900;
+  @apply rounded-xl border border-amber-200 bg-white/80 p-3 text-sm text-amber-900 sm:rounded-2xl sm:p-4;
 }
 
 .infoTitle {
@@ -45,12 +45,36 @@
   @apply space-y-2;
 }
 
+.fileBox {
+  @apply flex items-start gap-3 rounded-xl border border-amber-200 bg-white/85 p-3 sm:rounded-2xl sm:p-4;
+}
+
+.fileIcon {
+  @apply rounded-xl bg-amber-100 p-2 text-amber-900;
+}
+
+.fileBody {
+  @apply min-w-0 flex-1 space-y-2;
+}
+
+.fileInput {
+  @apply border-amber-200 bg-white text-sm;
+}
+
+.fileName {
+  @apply truncate text-sm font-semibold text-amber-950;
+}
+
+.fileHint {
+  @apply text-sm text-amber-900/75;
+}
+
 .textarea {
-  @apply min-h-[240px] border-amber-200 bg-white font-mono text-sm;
+  @apply h-24 min-h-24 resize-none border-amber-200 bg-white font-mono text-xs;
 }
 
 .modeBox {
-  @apply flex items-start gap-3 rounded-2xl border border-amber-200 bg-white/85 p-4;
+  @apply flex items-start gap-3 rounded-xl border border-amber-200 bg-white/85 p-3 sm:rounded-2xl sm:p-4;
 }
 
 .checkbox {
@@ -66,7 +90,7 @@
 }
 
 .previewBox {
-  @apply rounded-2xl border border-dashed border-amber-300 bg-white/60 p-4 text-sm text-amber-950;
+  @apply rounded-xl border border-dashed border-amber-300 bg-white/60 p-3 text-sm text-amber-950 sm:rounded-2xl sm:p-4;
 }
 
 .previewTitle {
@@ -90,7 +114,7 @@
 }
 
 .footer {
-  @apply mt-6 px-0 pb-0;
+  @apply mt-4 shrink-0 border-t border-amber-200/70 px-0 pb-0 pt-4;
 }
 
 .cancelButton {

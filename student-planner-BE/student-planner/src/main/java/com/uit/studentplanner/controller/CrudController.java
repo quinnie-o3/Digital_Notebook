@@ -1,7 +1,7 @@
 package com.uit.studentplanner.controller;
 
 import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,9 +13,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 public abstract class CrudController<T> {
 
-    private final JpaRepository<T, Long> repository;
+    private final MongoRepository<T, Long> repository;
 
-    protected CrudController(JpaRepository<T, Long> repository) {
+    protected CrudController(MongoRepository<T, Long> repository) {
         this.repository = repository;
     }
 
