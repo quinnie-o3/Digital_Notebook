@@ -12,13 +12,15 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI studentPlannerOpenApi() {
+        String backendUrl = System.getenv().getOrDefault("BACKEND_URL", "/");
+
         return new OpenAPI()
                 .info(new Info()
                         .title("Digital Student Planner API")
                         .version("1.0.0")
                         .description("REST API for users, profiles, timetables, subjects, classes, sessions, notes, tasks, and imports."))
                 .servers(List.of(new Server()
-                        .url("http://localhost:8080")
-                        .description("Local backend")));
+                        .url(backendUrl)
+                        .description("Backend")));
     }
 }

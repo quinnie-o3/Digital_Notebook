@@ -14,7 +14,7 @@ public class CorsConfig {
     public WebMvcConfigurer corsConfigurer() {
         String configuredOrigins = System.getenv().getOrDefault(
                 "FRONTEND_ORIGINS",
-                "http://localhost:3000,http://localhost:5173"
+                ""
         );
         List<String> allowedOrigins = Arrays.stream(configuredOrigins.split(","))
                 .map(String::trim)

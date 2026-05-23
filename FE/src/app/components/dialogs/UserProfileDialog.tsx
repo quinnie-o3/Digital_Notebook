@@ -4,6 +4,7 @@ import { Save, UserRound } from "lucide-react";
 import { UserProfile } from "../../types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
+import { API_BASE_URL } from "../../lib/apiConfig";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +16,6 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import styles from "./UserProfileDialog.module.css";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 interface AppUserResponse {
   userId: number;
