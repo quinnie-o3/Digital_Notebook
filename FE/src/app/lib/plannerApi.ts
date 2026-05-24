@@ -3,6 +3,11 @@ import { API_BASE_URL } from "./apiConfig";
 
 interface ApiUser {
   userId: number;
+  email?: string | null;
+  username?: string | null;
+  passwordHash?: string | null;
+  role?: string | null;
+  status?: string | null;
 }
 
 interface ApiTimetable {
@@ -136,11 +141,22 @@ async function getDefaultUserId() {
   const users = await requestJson<ApiUser[]>("/api/app-users");
   const firstUser = users[0];
 
-  if (!firstUser) {
-    throw new Error("No app_users row found.");
+  if (firstUser) {
+    return firstUser.userId;
   }
 
-  return firstUser.userId;
+  const createdUser = await requestJson<ApiUser>("/api/app-users", {
+    method: "POST",
+    body: JSON.stringify({
+      email: "default@student-planner.local",
+      username: "default_student",
+      passwordHash: "not-used",
+      role: "STUDENT",
+      status: "ACTIVE",
+    }),
+  });
+
+  return createdUser.userId;
 }
 
 async function getDefaultTimetable(userId: number) {

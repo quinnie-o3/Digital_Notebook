@@ -34,6 +34,8 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
   const [startTime, setStartTime] = useState("07:30");
   const [endTime, setEndTime] = useState("09:00");
   const [room, setRoom] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const availableEndTimes = UIT_PERIOD_SLOTS.map((slot) => slot.end).filter(
     (time) => minutesFromTime(time) > minutesFromTime(startTime),
@@ -41,25 +43,41 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
 
   const handleSubmit = async () => {
     if (!name.trim()) {
+      setErrorMessage("Enter a class name before adding it.");
       return;
     }
 
-    await onAddSubject({
-      name,
-      color,
-      day,
-      startTime,
-      endTime,
-      room: room.trim() || undefined,
-    });
+    setIsSaving(true);
+    setErrorMessage(null);
 
-    setName("");
-    setColor(PASTEL_COLORS[0]);
-    setDay(0);
-    setStartTime("07:30");
-    setEndTime("09:00");
-    setRoom("");
-    onOpenChange(false);
+    try {
+      await onAddSubject({
+        name: name.trim(),
+        color,
+        day,
+        startTime,
+        endTime,
+        room: room.trim() || undefined,
+        source: "manual",
+      });
+
+      setName("");
+      setColor(PASTEL_COLORS[0]);
+      setDay(0);
+      setStartTime("07:30");
+      setEndTime("09:00");
+      setRoom("");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to add class.", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not add this class. Check that the backend is running.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -172,12 +190,14 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
           </div>
         </div>
 
+        {errorMessage ? <p className={styles.errorMessage}>{errorMessage}</p> : null}
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} className={styles.submitButton}>
-            Add class
+          <Button onClick={handleSubmit} className={styles.submitButton} disabled={isSaving}>
+            {isSaving ? "Adding..." : "Add class"}
           </Button>
         </DialogFooter>
       </DialogContent>

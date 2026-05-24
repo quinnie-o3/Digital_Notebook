@@ -10,4 +10,4 @@ services:
       - key: MONGODB_DATABASE
         value: student-planner
       - key: FRONTEND_ORIGINS
-        sync: false
+        value: https://digital-notebook-rho.vercel.app
