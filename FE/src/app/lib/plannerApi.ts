@@ -129,7 +129,9 @@ function toHomeworkItem(task: ApiTask): HomeworkItem {
 
 function toAssignment(session: ApiClassSession, notes: ApiLessonNote[], tasks: ApiTask[]): Assignment {
   const note = notes[0];
-  const sessionTasks = tasks.filter((task) => task.sessionId === session.sessionId);
+  const sessionTasks = tasks
+    .filter((task) => task.sessionId === session.sessionId)
+    .sort((firstTask, secondTask) => firstTask.taskId - secondTask.taskId);
 
   return {
     id: note ? String(note.noteId) : `assignment-${session.sessionId}`,
@@ -209,6 +211,17 @@ export async function getPlannerStateFromOracle() {
       ),
     ),
   };
+}
+
+export async function getAssignmentForSessionFromOracle(subjectId: string) {
+  const sessionId = Number(subjectId);
+  const [session, lessonNotes, tasks] = await Promise.all([
+    requestJson<ApiClassSession>(`/api/class-sessions/${sessionId}`),
+    requestJson<ApiLessonNote[]>(`/api/lesson-notes/session/${sessionId}`),
+    requestJson<ApiTask[]>(`/api/tasks/session/${sessionId}`),
+  ]);
+
+  return toAssignment(session, lessonNotes, tasks);
 }
 
 export async function createCourseInOracle(subjectData: Omit<Subject, "id">) {
@@ -360,18 +373,17 @@ export async function saveAssignmentToOracle(assignment: Assignment) {
     },
   );
   const existingTasks = await requestJson<ApiTask[]>(`/api/tasks/session/${sessionId}`);
+  const existingTaskIds = new Set(existingTasks.map((task) => task.taskId));
   const keptTaskIds = new Set(
-    assignment.homework.map((item) => Number(item.id)).filter((id) => Number.isInteger(id)),
+    assignment.homework
+      .map((item) => Number(item.id))
+      .filter((id) => Number.isInteger(id) && existingTaskIds.has(id)),
   );
 
   await Promise.all(
     existingTasks
       .filter((task) => !keptTaskIds.has(task.taskId))
-      .map((task) =>
-        fetch(`${API_BASE_URL}/api/tasks/${task.taskId}`, {
-          method: "DELETE",
-        }),
-      ),
+      .map((task) => deleteRequest(`/api/tasks/${task.taskId}`)),
   );
 
   const savedTasks = await Promise.all(

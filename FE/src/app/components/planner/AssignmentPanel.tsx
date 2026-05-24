@@ -103,7 +103,7 @@ export function AssignmentPanel({
     }
 
     const newItem: HomeworkItem = {
-      id: Date.now().toString(),
+      id: `draft-${Date.now()}`,
       text: task,
       completed: false,
     };
@@ -295,7 +295,7 @@ export function AssignmentPanel({
             {saveState === "error"
               ? "Save failed. Please try again."
               : saveState === "saved"
-                ? "Saved to database."
+                ? "Notebook saved!"
                 : hasUnsavedChanges
                   ? "You have unsaved changes."
                   : "Make changes, then press Save."}

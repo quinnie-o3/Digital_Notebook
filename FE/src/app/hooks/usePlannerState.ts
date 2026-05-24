@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   createCourseInOracle,
+  getAssignmentForSessionFromOracle,
   getPlannerStateFromOracle,
   importScheduleToOracle,
   saveAssignmentToOracle,
@@ -88,6 +89,28 @@ export function usePlannerState() {
   const handleOpenNotebook = (subject: Subject) => {
     setSelectedSubject(subject);
     setIsNotebookOpen(true);
+
+    void (async () => {
+      try {
+        const refreshedAssignment = await getAssignmentForSessionFromOracle(subject.id);
+
+        setAssignments((previous) => {
+          const hasExistingAssignment = previous.some(
+            (assignment) => assignment.subjectId === refreshedAssignment.subjectId,
+          );
+
+          if (!hasExistingAssignment) {
+            return [...previous, refreshedAssignment];
+          }
+
+          return previous.map((assignment) =>
+            assignment.subjectId === refreshedAssignment.subjectId ? refreshedAssignment : assignment,
+          );
+        });
+      } catch (error) {
+        console.error("Failed to refresh notebook data.", error);
+      }
+    })();
   };
 
   const handleImportSchedule = (
