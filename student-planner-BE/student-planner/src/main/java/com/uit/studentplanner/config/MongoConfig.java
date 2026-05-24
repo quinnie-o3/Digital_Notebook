@@ -14,7 +14,7 @@ import org.springframework.util.StringUtils;
 @Configuration
 public class MongoConfig {
 
-    private static final String DEFAULT_DATABASE = "student_planner";
+    private static final String DEFAULT_DATABASE = "student-planner";
 
     private final Environment environment;
 
@@ -57,11 +57,21 @@ public class MongoConfig {
     }
 
     private String mongoDatabaseName() {
-        return firstText(
+        String configuredDatabase = firstText(
                 System.getenv("MONGODB_DATABASE"),
                 environment.getProperty("MONGODB_DATABASE"),
-                environment.getProperty("spring.data.mongodb.database"),
-                DEFAULT_DATABASE);
+                environment.getProperty("spring.data.mongodb.database"));
+
+        if (!StringUtils.hasText(configuredDatabase) || looksLikeMongoUri(configuredDatabase)) {
+            return DEFAULT_DATABASE;
+        }
+
+        if (!isValidDatabaseName(configuredDatabase)) {
+            throw new IllegalStateException(
+                    "MONGODB_DATABASE must be a database name only, for example student-planner.");
+        }
+
+        return configuredDatabase;
     }
 
     private String firstText(String... values) {
@@ -80,5 +90,14 @@ public class MongoConfig {
 
     private String blockedPort() {
         return ":" + String.join("", "270", "17");
+    }
+
+    private boolean looksLikeMongoUri(String value) {
+        return value.toLowerCase(Locale.ROOT).startsWith("mongodb");
+    }
+
+    private boolean isValidDatabaseName(String value) {
+        return value.chars().noneMatch(ch -> ch == '/' || ch == '\\' || ch == '.'
+                || ch == ' ' || ch == '"' || ch == '$');
     }
 }

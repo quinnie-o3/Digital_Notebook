@@ -8,6 +8,6 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DATABASE
-        value: student_planner
+        value: student-planner
       - key: FRONTEND_ORIGINS
         sync: false
