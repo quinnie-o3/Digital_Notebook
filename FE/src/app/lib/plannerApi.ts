@@ -74,6 +74,9 @@ interface ApiImportFile {
   errorMessage?: string | null;
 }
 
+const DEVICE_ID_STORAGE_KEY = "digitalNotebookDeviceId";
+let fallbackDeviceId: string | null = null;
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
 
@@ -101,6 +104,47 @@ async function deleteRequest(path: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Delete failed: ${response.status}`);
   }
+}
+
+function createDeviceId() {
+  const randomId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return randomId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32);
+}
+
+function getDeviceId() {
+  if (fallbackDeviceId) {
+    return fallbackDeviceId;
+  }
+
+  if (typeof window === "undefined") {
+    fallbackDeviceId = createDeviceId();
+    return fallbackDeviceId;
+  }
+
+  try {
+    const existingDeviceId = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+
+    if (existingDeviceId) {
+      fallbackDeviceId = existingDeviceId;
+      return existingDeviceId;
+    }
+
+    const nextDeviceId = createDeviceId();
+    window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, nextDeviceId);
+    fallbackDeviceId = nextDeviceId;
+    return nextDeviceId;
+  } catch {
+    fallbackDeviceId = createDeviceId();
+    return fallbackDeviceId;
+  }
+}
+
+function getDeviceUsername() {
+  return `device_${getDeviceId()}`;
 }
 
 function toSubject(session: ApiClassSession, classItem: ApiClass, subject: ApiSubject): Subject {
@@ -142,26 +186,47 @@ function toAssignment(session: ApiClassSession, notes: ApiLessonNote[], tasks: A
   };
 }
 
-async function getDefaultUserId() {
-  const users = await requestJson<ApiUser[]>("/api/app-users");
-  const firstUser = users[0];
+async function findDeviceUser(username: string) {
+  try {
+    return await requestJson<ApiUser>(`/api/app-users/username/${encodeURIComponent(username)}`);
+  } catch {
+    const users = await requestJson<ApiUser[]>("/api/app-users");
+    return users.find((user) => user.username === username) || null;
+  }
+}
 
-  if (firstUser) {
-    return firstUser.userId;
+async function getDefaultUserId() {
+  const username = getDeviceUsername();
+  const existingUser = await findDeviceUser(username);
+
+  if (existingUser) {
+    return existingUser.userId;
   }
 
-  const createdUser = await requestJson<ApiUser>("/api/app-users", {
-    method: "POST",
-    body: JSON.stringify({
-      email: "default@student-planner.local",
-      username: "default_student",
-      passwordHash: "not-used",
-      role: "STUDENT",
-      status: "ACTIVE",
-    }),
-  });
+  const userBody = {
+    email: `${username}@student-planner.local`,
+    username,
+    passwordHash: "not-used",
+    role: "STUDENT",
+    status: "ACTIVE",
+  };
 
-  return createdUser.userId;
+  try {
+    const createdUser = await requestJson<ApiUser>("/api/app-users", {
+      method: "POST",
+      body: JSON.stringify(userBody),
+    });
+
+    return createdUser.userId;
+  } catch (error) {
+    const userCreatedByAnotherRequest = await findDeviceUser(username);
+
+    if (userCreatedByAnotherRequest) {
+      return userCreatedByAnotherRequest.userId;
+    }
+
+    throw error;
+  }
 }
 
 async function getDefaultTimetable(userId: number) {
@@ -183,8 +248,10 @@ async function getDefaultTimetable(userId: number) {
 }
 
 export async function getPlannerStateFromOracle() {
-  const [subjects, classes, sessions, lessonNotes, tasks] = await Promise.all([
-    requestJson<ApiSubject[]>("/api/subjects"),
+  const userId = await getDefaultUserId();
+  const [subjects, timetables, classes, sessions, lessonNotes, tasks] = await Promise.all([
+    requestJson<ApiSubject[]>(`/api/subjects/user/${userId}`),
+    requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`),
     requestJson<ApiClass[]>("/api/classes"),
     requestJson<ApiClassSession[]>("/api/class-sessions"),
     requestJson<ApiLessonNote[]>("/api/lesson-notes"),
@@ -192,11 +259,19 @@ export async function getPlannerStateFromOracle() {
   ]);
 
   const subjectsById = new Map(subjects.map((subject) => [subject.subjectId, subject]));
-  const classesById = new Map(classes.map((classItem) => [classItem.classId, classItem]));
+  const timetableIds = new Set(timetables.map((timetable) => timetable.timetableId));
+  const visibleClasses = classes.filter(
+    (classItem) =>
+      subjectsById.has(classItem.subjectId) || timetableIds.has(classItem.timetableId),
+  );
+  const classesById = new Map(visibleClasses.map((classItem) => [classItem.classId, classItem]));
   const visibleSessions = sessions.filter((session) => {
     const classItem = classesById.get(session.classId);
     return classItem && subjectsById.has(classItem.subjectId);
   });
+  const sessionIds = new Set(visibleSessions.map((session) => session.sessionId));
+  const visibleLessonNotes = lessonNotes.filter((note) => sessionIds.has(note.sessionId));
+  const visibleTasks = tasks.filter((task) => sessionIds.has(task.sessionId));
 
   return {
     subjects: visibleSessions.map((session) => {
@@ -206,8 +281,8 @@ export async function getPlannerStateFromOracle() {
     assignments: visibleSessions.map((session) =>
       toAssignment(
         session,
-        lessonNotes.filter((note) => note.sessionId === session.sessionId),
-        tasks,
+        visibleLessonNotes.filter((note) => note.sessionId === session.sessionId),
+        visibleTasks,
       ),
     ),
   };

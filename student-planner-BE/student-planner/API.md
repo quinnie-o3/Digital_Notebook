@@ -78,6 +78,7 @@ Supported resources:
 
 | Method | Path | Description |
 | --- | --- | --- |
+| `GET` | `/api/app-users/username/{username}` | Get one app user by username. |
 | `GET` | `/api/user-profiles/user/{userId}` | Get the profile for a user. |
 | `GET` | `/api/timetables/user/{userId}` | List timetables for a user. |
 | `GET` | `/api/subjects/user/{userId}` | List subjects for a user. |
