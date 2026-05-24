@@ -22,7 +22,8 @@ Example:
 ## Common Rules
 
 - Content type: `application/json`
-- Authentication: not implemented in the current backend.
+- Authentication: `/api/health`, `/api/auth/device-session`, `/api/auth/refresh`, and `/api/auth/logout` are public. Other `/api/**` endpoints require `Authorization: Bearer <accessToken>`.
+- Web clients should store the access token in session storage so it ends with the browser session, and store the refresh token in local storage for the next visit.
 - ID values are generated automatically on `POST`. Do not send the ID field when creating a record.
 - `PUT /{id}` uses the path ID and overwrites the entity ID in the request body.
 - `DELETE /{id}` returns an empty `200 OK` response.
@@ -45,6 +46,49 @@ Response:
 {
   "status": "ok"
 }
+```
+
+## Authentication
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/auth/device-session` | Create or resume the device user and issue access/refresh tokens. |
+| `POST` | `/api/auth/refresh` | Rotate a refresh token and issue a new access/refresh token pair. |
+| `POST` | `/api/auth/logout` | Revoke a refresh token. |
+| `GET` | `/api/auth/me` | Return the authenticated user for a valid access token. |
+
+Create a device session:
+
+```bash
+curl -X POST <BASE_URL>/api/auth/device-session \
+  -H "Content-Type: application/json" \
+  -d '{ "deviceId": "browser-device-id" }'
+```
+
+Response:
+
+```json
+{
+  "accessToken": "<jwt-access-token>",
+  "refreshToken": "<opaque-refresh-token>",
+  "accessTokenExpiresAt": 1779658200,
+  "refreshTokenExpiresAt": "2026-06-23T09:00:00",
+  "user": {
+    "userId": 1,
+    "email": "device_browser-device-id@student-planner.local",
+    "username": "device_browser-device-id",
+    "role": "STUDENT",
+    "status": "ACTIVE"
+  }
+}
+```
+
+Refresh a session:
+
+```bash
+curl -X POST <BASE_URL>/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{ "refreshToken": "<opaque-refresh-token>" }'
 ```
 
 ## Shared CRUD Endpoints
@@ -259,6 +303,7 @@ Create a user:
 
 ```bash
 curl -X POST <BASE_URL>/api/app-users \
+  -H "Authorization: Bearer <accessToken>" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "student@example.com",
@@ -273,6 +318,7 @@ Create a timetable:
 
 ```bash
 curl -X POST <BASE_URL>/api/timetables \
+  -H "Authorization: Bearer <accessToken>" \
   -H "Content-Type: application/json" \
   -d '{
     "userId": 1,
@@ -287,13 +333,15 @@ curl -X POST <BASE_URL>/api/timetables \
 List subjects by user:
 
 ```bash
-curl <BASE_URL>/api/subjects/user/1
+curl <BASE_URL>/api/subjects/user/1 \
+  -H "Authorization: Bearer <accessToken>"
 ```
 
 Update a task:
 
 ```bash
 curl -X PUT <BASE_URL>/api/tasks/1 \
+  -H "Authorization: Bearer <accessToken>" \
   -H "Content-Type: application/json" \
   -d '{
     "noteId": 1,

@@ -1,14 +1,5 @@
 import { Assignment, HomeworkItem, Subject } from "../types";
-import { API_BASE_URL } from "./apiConfig";
-
-interface ApiUser {
-  userId: number;
-  email?: string | null;
-  username?: string | null;
-  passwordHash?: string | null;
-  role?: string | null;
-  status?: string | null;
-}
+import { authFetch, getAuthenticatedUser } from "./authApi";
 
 interface ApiTimetable {
   timetableId: number;
@@ -74,9 +65,6 @@ interface ApiImportFile {
   errorMessage?: string | null;
 }
 
-const DEVICE_ID_STORAGE_KEY = "digitalNotebookDeviceId";
-let fallbackDeviceId: string | null = null;
-
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
 
@@ -84,7 +72,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authFetch(path, {
     ...init,
     headers,
   });
@@ -97,54 +85,13 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function deleteRequest(path: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authFetch(path, {
     method: "DELETE",
   });
 
   if (!response.ok) {
     throw new Error(`Delete failed: ${response.status}`);
   }
-}
-
-function createDeviceId() {
-  const randomId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-  return randomId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32);
-}
-
-function getDeviceId() {
-  if (fallbackDeviceId) {
-    return fallbackDeviceId;
-  }
-
-  if (typeof window === "undefined") {
-    fallbackDeviceId = createDeviceId();
-    return fallbackDeviceId;
-  }
-
-  try {
-    const existingDeviceId = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
-
-    if (existingDeviceId) {
-      fallbackDeviceId = existingDeviceId;
-      return existingDeviceId;
-    }
-
-    const nextDeviceId = createDeviceId();
-    window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, nextDeviceId);
-    fallbackDeviceId = nextDeviceId;
-    return nextDeviceId;
-  } catch {
-    fallbackDeviceId = createDeviceId();
-    return fallbackDeviceId;
-  }
-}
-
-function getDeviceUsername() {
-  return `device_${getDeviceId()}`;
 }
 
 function toSubject(session: ApiClassSession, classItem: ApiClass, subject: ApiSubject): Subject {
@@ -186,47 +133,9 @@ function toAssignment(session: ApiClassSession, notes: ApiLessonNote[], tasks: A
   };
 }
 
-async function findDeviceUser(username: string) {
-  try {
-    return await requestJson<ApiUser>(`/api/app-users/username/${encodeURIComponent(username)}`);
-  } catch {
-    const users = await requestJson<ApiUser[]>("/api/app-users");
-    return users.find((user) => user.username === username) || null;
-  }
-}
-
 async function getDefaultUserId() {
-  const username = getDeviceUsername();
-  const existingUser = await findDeviceUser(username);
-
-  if (existingUser) {
-    return existingUser.userId;
-  }
-
-  const userBody = {
-    email: `${username}@student-planner.local`,
-    username,
-    passwordHash: "not-used",
-    role: "STUDENT",
-    status: "ACTIVE",
-  };
-
-  try {
-    const createdUser = await requestJson<ApiUser>("/api/app-users", {
-      method: "POST",
-      body: JSON.stringify(userBody),
-    });
-
-    return createdUser.userId;
-  } catch (error) {
-    const userCreatedByAnotherRequest = await findDeviceUser(username);
-
-    if (userCreatedByAnotherRequest) {
-      return userCreatedByAnotherRequest.userId;
-    }
-
-    throw error;
-  }
+  const user = await getAuthenticatedUser();
+  return user.userId;
 }
 
 async function getDefaultTimetable(userId: number) {

@@ -11,3 +11,5 @@ services:
         value: student-planner
       - key: FRONTEND_ORIGINS
         value: https://digital-notebook-rho.vercel.app
+      - key: AUTH_TOKEN_SECRET
+        sync: false

@@ -4,7 +4,7 @@ import { Save, UserRound } from "lucide-react";
 import { UserProfile } from "../../types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
-import { API_BASE_URL } from "../../lib/apiConfig";
+import { authFetch, getAuthenticatedUser } from "../../lib/authApi";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,12 @@ import styles from "./UserProfileDialog.module.css";
 interface AppUserResponse {
   userId: number;
   email: string;
-  passwordHash: string;
+  username?: string | null;
+  passwordHash?: string | null;
+  role?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 interface UserProfileResponse {
@@ -42,6 +47,7 @@ export function UserProfileDialog({
   onProfileSaved,
 }: UserProfileDialogProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [appUser, setAppUser] = useState<AppUserResponse | null>(null);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -60,22 +66,18 @@ export function UserProfileDialog({
       setStatus(null);
 
       try {
-        const usersResponse = await fetch(`${API_BASE_URL}/api/app-users`, {
+        const authenticatedUser = await getAuthenticatedUser();
+        const userResponse = await authFetch(`/api/app-users/${authenticatedUser.userId}`, {
           signal: controller.signal,
         });
 
-        if (!usersResponse.ok) {
+        if (!userResponse.ok) {
           throw new Error("Could not load user information.");
         }
 
-        const users = (await usersResponse.json()) as AppUserResponse[];
-        const user = users[0];
+        const user = (await userResponse.json()) as AppUserResponse;
 
-        if (!user) {
-          throw new Error("No user found in the database.");
-        }
-
-        const profileResponse = await fetch(`${API_BASE_URL}/api/user-profiles/user/${user.userId}`, {
+        const profileResponse = await authFetch(`/api/user-profiles/user/${user.userId}`, {
           signal: controller.signal,
         });
         const userProfile = profileResponse.ok
@@ -87,10 +89,11 @@ export function UserProfileDialog({
           name: userProfile?.fullName || user.email,
           fullName: userProfile?.fullName || "",
           email: user.email,
-          passwordHash: user.passwordHash,
+          passwordHash: user.passwordHash || "",
           avatarUrl: userProfile?.avatarUrl,
         };
 
+        setAppUser(user);
         setProfile(data);
         setName(data.fullName || data.email);
         setPassword(data.passwordHash ?? "");
@@ -131,21 +134,22 @@ export function UserProfileDialog({
     setStatus(null);
 
     try {
-      if (!profile) {
+      if (!profile || !appUser) {
         throw new Error("No user loaded.");
       }
 
-      const userResponse = await fetch(`${API_BASE_URL}/api/app-users/${profile.userId}`, {
+      const userResponse = await authFetch(`/api/app-users/${profile.userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...appUser,
           userId: profile.userId,
           email: profile.email,
           passwordHash: password,
-          role: "student",
-          status: "active",
+          role: appUser.role || "STUDENT",
+          status: appUser.status || "ACTIVE",
         }),
       });
 
@@ -156,7 +160,7 @@ export function UserProfileDialog({
       const profilePath = profile.profileId
         ? `/api/user-profiles/${profile.profileId}`
         : "/api/user-profiles";
-      const profileResponse = await fetch(`${API_BASE_URL}${profilePath}`, {
+      const profileResponse = await authFetch(profilePath, {
         method: profile.profileId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -173,16 +177,19 @@ export function UserProfileDialog({
         throw new Error("Could not save profile information.");
       }
 
+      const savedUser = (await userResponse.json()) as AppUserResponse;
       const savedProfile = (await profileResponse.json()) as UserProfileResponse;
       const updatedProfile: UserProfile = {
         ...profile,
         profileId: savedProfile.profileId,
-        name: savedProfile.fullName || profile.email,
+        name: savedProfile.fullName || savedUser.email,
         fullName: savedProfile.fullName || "",
+        email: savedUser.email,
         passwordHash: password,
         avatarUrl: savedProfile.avatarUrl,
       };
 
+      setAppUser(savedUser);
       setProfile(updatedProfile);
       setName(updatedProfile.fullName || updatedProfile.email);
       setPassword(updatedProfile.passwordHash ?? "");
