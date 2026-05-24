@@ -4,8 +4,7 @@ REST API for the Digital Student Planner backend.
 
 ## Base URLs
 
-- Local: `http://localhost:8080`
-- Render: use your deployed backend URL, for example `https://student-planner-be.onrender.com`
+- Set `BASE_URL` to your deployed backend URL, for example `https://student-planner-be.onrender.com`
 
 ## Interactive Docs
 
@@ -17,7 +16,7 @@ This project uses Springdoc OpenAPI.
 Example:
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+<BASE_URL>/swagger-ui/index.html
 ```
 
 ## Common Rules
@@ -258,7 +257,7 @@ Supported resources:
 Create a user:
 
 ```bash
-curl -X POST http://localhost:8080/api/app-users \
+curl -X POST <BASE_URL>/api/app-users \
   -H "Content-Type: application/json" \
   -d '{
     "email": "student@example.com",
@@ -272,7 +271,7 @@ curl -X POST http://localhost:8080/api/app-users \
 Create a timetable:
 
 ```bash
-curl -X POST http://localhost:8080/api/timetables \
+curl -X POST <BASE_URL>/api/timetables \
   -H "Content-Type: application/json" \
   -d '{
     "userId": 1,
@@ -287,13 +286,13 @@ curl -X POST http://localhost:8080/api/timetables \
 List subjects by user:
 
 ```bash
-curl http://localhost:8080/api/subjects/user/1
+curl <BASE_URL>/api/subjects/user/1
 ```
 
 Update a task:
 
 ```bash
-curl -X PUT http://localhost:8080/api/tasks/1 \
+curl -X PUT <BASE_URL>/api/tasks/1 \
   -H "Content-Type: application/json" \
   -d '{
     "noteId": 1,
@@ -305,4 +304,3 @@ curl -X PUT http://localhost:8080/api/tasks/1 \
     "priority": "HIGH"
   }'
 ```
-
