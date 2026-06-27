@@ -143,13 +143,6 @@ export function WeeklySchedule({
       .sort((left, right) => minutesFromTime(left.startTime) - minutesFromTime(right.startTime)),
   }));
 
-  const occupiedCells = new Set<string>();
-  subjectPlacements.forEach(({ dayIndex, rowIndex, rowSpan }) => {
-    for (let offset = 0; offset < rowSpan; offset += 1) {
-      occupiedCells.add(`${dayIndex}-${rowIndex + offset}`);
-    }
-  });
-
   const gridStyle = {
     gridTemplateColumns: `minmax(10.5rem, 11.5rem) repeat(${DAY_LABELS.length}, minmax(10rem, 1fr))`,
     gridTemplateRows: `auto repeat(${scheduleSlots.length}, var(--schedule-hour-height))`,
@@ -269,21 +262,13 @@ export function WeeklySchedule({
           ))}
 
           {scheduleSlots.flatMap((_, rowIndex) =>
-            DAY_LABELS.map((_, dayIndex) => {
-              const cellKey = `${dayIndex}-${rowIndex}`;
-
-              if (occupiedCells.has(cellKey)) {
-                return null;
-              }
-
-              return (
-                <div
-                  key={cellKey}
-                  className={styles.emptyCell}
-                  style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
-                />
-              );
-            }),
+            DAY_LABELS.map((_, dayIndex) => (
+              <div
+                key={`${dayIndex}-${rowIndex}`}
+                className={styles.emptyCell}
+                style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
+              />
+            )),
           )}
 
           {subjectPlacements.map(
