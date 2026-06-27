@@ -18,6 +18,7 @@ import { Textarea } from "../ui/textarea";
 import styles from "./ImportUITScheduleDialog.module.css";
 
 type ImportMode = "replace" | "append";
+const UIT_CALENDAR_EXTENSIONS = [".ics", ".isc"];
 
 interface ImportUITScheduleDialogProps {
   open: boolean;
@@ -59,9 +60,14 @@ export function ImportUITScheduleDialog({
       return;
     }
 
-    if (!file.name.toLowerCase().endsWith(".ics") && file.type !== "text/calendar") {
+    const fileName = file.name.toLowerCase();
+    const isCalendarFile =
+      UIT_CALENDAR_EXTENSIONS.some((extension) => fileName.endsWith(extension)) ||
+      file.type === "text/calendar";
+
+    if (!isCalendarFile) {
       setSelectedFileName(null);
-      setFeedback("Please choose a .ics calendar file exported from UIT Student.");
+      setFeedback("Please choose a .ics or .isc calendar file exported from UIT Student.");
       return;
     }
 
@@ -72,7 +78,7 @@ export function ImportUITScheduleDialog({
       setRawText(typeof reader.result === "string" ? reader.result : "");
     };
     reader.onerror = () => {
-      setFeedback("The .ics file could not be read. Please try exporting it again.");
+      setFeedback("The calendar file could not be read. Please try exporting it again.");
     };
     reader.readAsText(file);
   };
@@ -101,7 +107,7 @@ export function ImportUITScheduleDialog({
               <div>
                 <DialogTitle>Import from UIT Student</DialogTitle>
                 <DialogDescription className={styles.description}>
-                  Upload the .ics timetable file exported from UIT Student.
+                  Upload the .ics or .isc timetable file exported from UIT Student.
                 </DialogDescription>
               </div>
             </div>
@@ -116,13 +122,13 @@ export function ImportUITScheduleDialog({
               <ol className={styles.infoList}>
                 <li>Sign in to `student.uit.edu.vn`.</li>
                 <li>Open the timetable page in your UIT Student portal.</li>
-                <li>Download or export the timetable as an `.ics` calendar file.</li>
+                <li>Download or export the timetable as an `.ics` or `.isc` calendar file.</li>
                 <li>Choose that file below, then import it into this planner.</li>
               </ol>
             </div>
 
             <div className={styles.field}>
-              <Label htmlFor="uit-ics-file">UIT Student .ics file</Label>
+              <Label htmlFor="uit-ics-file">UIT Student calendar file</Label>
               <div className={styles.fileBox}>
                 <div className={styles.fileIcon}>
                   <FileText className="size-5" />
@@ -131,14 +137,14 @@ export function ImportUITScheduleDialog({
                   <Input
                     id="uit-ics-file"
                     type="file"
-                    accept=".ics,text/calendar"
+                    accept=".ics,.isc,text/calendar"
                     onChange={(event) => handleFileChange(event.target.files?.[0])}
                     className={styles.fileInput}
                   />
                   {selectedFileName ? (
                     <p className={styles.fileName}>{selectedFileName}</p>
                   ) : (
-                    <p className={styles.fileHint}>Choose the calendar file downloaded from UIT Student.</p>
+                    <p className={styles.fileHint}>Choose the .ics or .isc file downloaded from UIT Student.</p>
                   )}
                 </div>
               </div>
@@ -157,7 +163,7 @@ export function ImportUITScheduleDialog({
                 onPaste={(event) => {
                   setClipboardHtml(event.clipboardData.getData("text/html") || null);
                 }}
-                placeholder="Optional: paste the .ics content here if file upload is not available..."
+                placeholder="Optional: paste the calendar file content here if file upload is not available..."
                 className={styles.textarea}
               />
             </div>
