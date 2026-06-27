@@ -162,6 +162,10 @@ async function requestAuth<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+function getRefreshTokenValue() {
+  return getRefreshToken();
+}
+
 function applyAuthResponse(authResponse: AuthResponse) {
   setAccessToken(authResponse.accessToken);
   setRefreshToken(authResponse.refreshToken);
@@ -207,6 +211,28 @@ async function loadSession() {
   return refreshOrStartSession();
 }
 
+async function loadStoredSession() {
+  if (currentUser && getAccessToken()) {
+    return currentUser;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    return await refreshSession(refreshToken);
+  } catch {
+    clearStoredTokens();
+    return null;
+  }
+}
+
+export async function restoreAuthSession() {
+  return loadStoredSession();
+}
+
 export async function ensureAuthSession() {
   if (!sessionPromise) {
     sessionPromise = loadSession().finally(() => {
@@ -215,6 +241,44 @@ export async function ensureAuthSession() {
   }
 
   return sessionPromise;
+}
+
+export async function login(email: string, password: string) {
+  const authResponse = await requestAuth<AuthResponse>("/api/auth/login", {
+    email,
+    password,
+  });
+
+  return applyAuthResponse(authResponse);
+}
+
+export async function register(email: string, password: string) {
+  const authResponse = await requestAuth<AuthResponse>("/api/auth/register", {
+    email,
+    password,
+  });
+
+  return applyAuthResponse(authResponse);
+}
+
+export async function logout() {
+  const refreshToken = getRefreshTokenValue();
+
+  if (refreshToken) {
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      // Local logout should still complete if the backend is unavailable.
+    }
+  }
+
+  clearStoredTokens();
 }
 
 export async function getAuthenticatedUser() {

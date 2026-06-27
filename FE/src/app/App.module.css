@@ -18,3 +18,7 @@
 .main {
   @apply flex-1 overflow-visible rounded-2xl border border-white/70 bg-white/45 shadow-xl backdrop-blur md:rounded-[28px] lg:rounded-[36px] lg:shadow-2xl;
 }
+
+.loadingPage {
+  @apply grid min-h-screen place-items-center bg-[#fdf9f0] text-sm font-semibold text-slate-700;
+}

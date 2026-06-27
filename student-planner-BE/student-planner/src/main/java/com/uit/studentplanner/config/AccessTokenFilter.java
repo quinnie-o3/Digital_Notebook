@@ -62,6 +62,8 @@ public class AccessTokenFilter extends OncePerRequestFilter {
                 || !path.startsWith("/api/")
                 || "/api/health".equals(path)
                 || "/api/auth/device-session".equals(path)
+                || "/api/auth/register".equals(path)
+                || "/api/auth/login".equals(path)
                 || "/api/auth/refresh".equals(path)
                 || "/api/auth/logout".equals(path);
     }

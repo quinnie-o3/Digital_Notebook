@@ -49,7 +49,6 @@ export function UserProfileDialog({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [appUser, setAppUser] = useState<AppUserResponse | null>(null);
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,7 +95,6 @@ export function UserProfileDialog({
         setAppUser(user);
         setProfile(data);
         setName(data.fullName || data.email);
-        setPassword(data.passwordHash ?? "");
       } catch (error) {
         if (!controller.signal.aborted) {
           setStatus(error instanceof Error ? error.message : "Could not load user information.");
@@ -147,7 +145,7 @@ export function UserProfileDialog({
           ...appUser,
           userId: profile.userId,
           email: profile.email,
-          passwordHash: password,
+          passwordHash: appUser.passwordHash,
           role: appUser.role || "STUDENT",
           status: appUser.status || "ACTIVE",
         }),
@@ -185,14 +183,13 @@ export function UserProfileDialog({
         name: savedProfile.fullName || savedUser.email,
         fullName: savedProfile.fullName || "",
         email: savedUser.email,
-        passwordHash: password,
+        passwordHash: savedUser.passwordHash || "",
         avatarUrl: savedProfile.avatarUrl,
       };
 
       setAppUser(savedUser);
       setProfile(updatedProfile);
       setName(updatedProfile.fullName || updatedProfile.email);
-      setPassword(updatedProfile.passwordHash ?? "");
       onProfileSaved?.(updatedProfile);
       setStatus("Saved changes to the database.");
     } catch (error) {
@@ -207,7 +204,7 @@ export function UserProfileDialog({
       <DialogContent className={styles.content}>
         <DialogHeader>
           <DialogTitle>User information</DialogTitle>
-          <DialogDescription>View avatar and email. Edit name or password only.</DialogDescription>
+          <DialogDescription>View your account information and edit your display name.</DialogDescription>
         </DialogHeader>
 
         <div className={styles.profileHead}>
@@ -243,17 +240,6 @@ export function UserProfileDialog({
           <div className={styles.field}>
             <Label htmlFor="profile-email">Email</Label>
             <Input id="profile-email" value={profile?.email ?? ""} disabled readOnly />
-          </div>
-
-          <div className={styles.field}>
-            <Label htmlFor="profile-password">Password</Label>
-            <Input
-              id="profile-password"
-              type="text"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={isLoading || isSaving}
-            />
           </div>
         </div>
 

@@ -50,9 +50,13 @@ function getDateForWeekday(weekStart: Date, dayIndex: number) {
   return addDays(weekStart, dayIndex);
 }
 
+function isSameWeek(firstDate: Date, secondDate: Date) {
+  return formatDateInputValue(getWeekStart(firstDate)) === formatDateInputValue(getWeekStart(secondDate));
+}
+
 function isSubjectVisibleInWeek(subject: Subject, selectedDate: string) {
   if (!subject.startDate && !subject.endDate) {
-    return true;
+    return isSameWeek(parseDateInputValue(selectedDate), new Date());
   }
 
   const weekStart = getWeekStart(parseDateInputValue(selectedDate));
@@ -130,8 +134,14 @@ export function usePlannerState() {
     const nextSelectedSubject =
       subjects.find((subject) => subject.id === selectedSubject.id) || null;
 
+    if (!nextSelectedSubject || !isSubjectVisibleInWeek(nextSelectedSubject, selectedDate)) {
+      setSelectedSubject(null);
+      setIsNotebookOpen(false);
+      return;
+    }
+
     setSelectedSubject(nextSelectedSubject);
-  }, [selectedSubject, subjects]);
+  }, [selectedDate, selectedSubject, subjects]);
 
   const handleAddSubject = async (subjectData: Omit<Subject, "id">) => {
     const newSubject = await createCourseInOracle(subjectData);

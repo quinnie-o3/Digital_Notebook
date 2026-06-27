@@ -20,6 +20,10 @@
   @apply truncate text-[11px] font-semibold uppercase tracking-[0.12em] sm:text-xs sm:tracking-[0.18em];
 }
 
+.headerActions {
+  @apply flex items-center gap-2;
+}
+
 .profileButton {
   @apply size-9 rounded-full border-amber-200 bg-white text-amber-900 shadow-sm hover:bg-amber-50;
 }

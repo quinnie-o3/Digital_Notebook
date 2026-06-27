@@ -1,14 +1,15 @@
-import { BookOpen, NotebookPen, UserRound } from "lucide-react";
+import { BookOpen, LogOut, NotebookPen, UserRound } from "lucide-react";
 
 import { Button } from "../ui/button";
 import styles from "./PlannerHeader.module.css";
 
 interface PlannerHeaderProps {
   importFeedback: string | null;
+  onLogout: () => void;
   onOpenUserProfile: () => void;
 }
 
-export function PlannerHeader({ importFeedback, onOpenUserProfile }: PlannerHeaderProps) {
+export function PlannerHeader({ importFeedback, onLogout, onOpenUserProfile }: PlannerHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.topBar}>
@@ -17,15 +18,26 @@ export function PlannerHeader({ importFeedback, onOpenUserProfile }: PlannerHead
           <span className={styles.badgeText}>Digital notebook planner</span>
         </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className={styles.profileButton}
-          onClick={onOpenUserProfile}
-          aria-label="Open user information"
-        >
-          <UserRound className="size-5" />
-        </Button>
+        <div className={styles.headerActions}>
+          <Button
+            variant="outline"
+            size="icon"
+            className={styles.profileButton}
+            onClick={onOpenUserProfile}
+            aria-label="Open user information"
+          >
+            <UserRound className="size-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className={styles.profileButton}
+            onClick={onLogout}
+            aria-label="Log out"
+          >
+            <LogOut className="size-5" />
+          </Button>
+        </div>
       </div>
 
       <div className={styles.row}>

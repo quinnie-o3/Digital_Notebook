@@ -1,0 +1,61 @@
+@reference "../../../styles/index.css";
+
+.page {
+  @apply grid min-h-screen place-items-center px-4 py-8;
+  background:
+    radial-gradient(circle at top, rgba(255, 244, 214, 0.95), transparent 36%),
+    linear-gradient(180deg, #fdf9f0 0%, #f3e6d3 100%);
+}
+
+.panel {
+  @apply w-full max-w-md rounded-2xl border border-amber-200/70 bg-white/85 p-5 shadow-xl backdrop-blur;
+}
+
+.brand {
+  @apply flex items-center gap-3;
+}
+
+.brandIcon {
+  @apply grid h-12 w-12 place-items-center rounded-2xl bg-slate-900 text-white shadow-sm;
+}
+
+.eyebrow {
+  @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700;
+}
+
+.title {
+  @apply mt-1 text-xl font-semibold text-slate-950;
+}
+
+.modeSwitch {
+  @apply mt-5 grid grid-cols-2 rounded-xl bg-amber-50 p-1;
+}
+
+.modeButton,
+.modeButtonActive {
+  @apply rounded-lg px-3 py-2 text-sm font-semibold transition-colors;
+}
+
+.modeButton {
+  @apply text-amber-900 hover:bg-white/70;
+}
+
+.modeButtonActive {
+  @apply bg-white text-slate-950 shadow-sm;
+}
+
+.form {
+  @apply mt-5 grid gap-4;
+}
+
+.field {
+  @apply grid gap-2;
+}
+
+.errorMessage {
+  @apply rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700;
+}
+
+.submitButton {
+  @apply mt-1 w-full gap-2 bg-slate-900 text-white hover:bg-slate-800;
+}

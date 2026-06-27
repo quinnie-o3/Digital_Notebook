@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { AuthPage } from "./components/auth/AuthPage";
 import { AddSubjectDialog } from "./components/dialogs/AddSubjectDialog";
 import { ImportUITScheduleDialog } from "./components/dialogs/ImportUITScheduleDialog";
 import { UserProfileDialog } from "./components/dialogs/UserProfileDialog";
@@ -7,17 +8,59 @@ import { NotebookSheet } from "./components/planner/NotebookSheet";
 import { PlannerHeader } from "./components/planner/PlannerHeader";
 import { WeeklySchedule } from "./components/planner/WeeklySchedule";
 import { usePlannerState } from "./hooks/usePlannerState";
+import { ApiUser, logout, restoreAuthSession } from "./lib/authApi";
 import styles from "./App.module.css";
 
 export default function App() {
+  const [authenticatedUser, setAuthenticatedUser] = useState<ApiUser | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    restoreAuthSession()
+      .then((user) => {
+        if (!isCancelled) {
+          setAuthenticatedUser(user);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsRestoringSession(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  if (isRestoringSession) {
+    return <div className={styles.loadingPage}>Loading planner...</div>;
+  }
+
+  if (!authenticatedUser) {
+    return <AuthPage onAuthenticated={setAuthenticatedUser} />;
+  }
+
+  return <PlannerApp onLogout={() => setAuthenticatedUser(null)} />;
+}
+
+function PlannerApp({ onLogout }: { onLogout: () => void }) {
   const planner = usePlannerState();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+
+  async function handleLogout() {
+    await logout();
+    onLogout();
+  }
 
   return (
     <div className={styles.page}>
       <div className={styles.layout}>
         <PlannerHeader
           importFeedback={planner.importFeedback}
+          onLogout={handleLogout}
           onOpenUserProfile={() => setIsUserProfileOpen(true)}
         />
 
