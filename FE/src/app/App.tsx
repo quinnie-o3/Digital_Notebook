@@ -23,11 +23,15 @@ export default function App() {
 
         <main className={styles.main}>
           <WeeklySchedule
-            subjects={planner.subjects}
+            subjects={planner.visibleSubjects}
             activeSubjectId={planner.selectedSubject?.id}
+            selectedDate={planner.selectedDate}
+            selectedWeekLabel={planner.selectedWeekLabel}
             onOpenNotebook={planner.handleOpenNotebook}
             onAddSubject={() => planner.setIsAddDialogOpen(true)}
             onImportSchedule={() => planner.setIsImportDialogOpen(true)}
+            onMoveWeek={planner.handleMoveWeek}
+            onSelectedDateChange={planner.setSelectedDate}
           />
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Upload } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Plus, Upload } from "lucide-react";
 
 import { DAY_LABELS, minutesFromTime } from "../../lib/uitSchedule";
 import { Subject } from "../../types";
@@ -10,9 +10,13 @@ import styles from "./WeeklySchedule.module.css";
 interface WeeklyScheduleProps {
   subjects: Subject[];
   activeSubjectId?: string | null;
+  selectedDate: string;
+  selectedWeekLabel: string;
   onOpenNotebook: (subject: Subject) => void;
   onAddSubject: () => void;
   onImportSchedule: () => void;
+  onMoveWeek: (direction: -1 | 1) => void;
+  onSelectedDateChange: (date: string) => void;
 }
 
 interface SubjectPlacement {
@@ -33,6 +37,31 @@ interface ScheduleSlot {
 const DEFAULT_TIMELINE_START_HOUR = 7;
 const DEFAULT_TIMELINE_END_HOUR = 21;
 const MINUTES_PER_HOUR = 60;
+const WEEK_LENGTH_DAYS = 7;
+
+function parseDateInputValue(value: string) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+
+  return nextDate;
+}
+
+function getWeekStart(date: Date) {
+  const dayIndex = (date.getDay() + 6) % WEEK_LENGTH_DAYS;
+
+  return addDays(date, -dayIndex);
+}
+
+function formatDayDate(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
 
 function timeFromHour(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
@@ -121,10 +150,16 @@ function getSubjectPlacement(subject: Subject, scheduleSlots: ScheduleSlot[]): S
 export function WeeklySchedule({
   subjects,
   activeSubjectId,
+  selectedDate,
+  selectedWeekLabel,
   onOpenNotebook,
   onAddSubject,
   onImportSchedule,
+  onMoveWeek,
+  onSelectedDateChange,
 }: WeeklyScheduleProps) {
+  const weekStart = getWeekStart(parseDateInputValue(selectedDate));
+  const dayDates = DAY_LABELS.map((_, dayIndex) => formatDayDate(addDays(weekStart, dayIndex)));
   const scheduleSlots = buildScheduleSlots(subjects);
   const subjectPlacements = subjects
     .map((subject) => getSubjectPlacement(subject, scheduleSlots))
@@ -156,11 +191,42 @@ export function WeeklySchedule({
             <p className={styles.eyebrow}>Digital Student Planner</p>
             <h2 className={styles.title}>Weekly timetable</h2>
             <p className={styles.description}>
-              Open the notebook icon on each class card instead of splitting the screen in half.
+              {selectedWeekLabel}
             </p>
           </div>
 
           <div className={styles.actions}>
+            <div className={styles.weekControls}>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className={styles.weekButton}
+                onClick={() => onMoveWeek(-1)}
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <label className={styles.datePickerLabel}>
+                <CalendarDays className="size-4" />
+                <input
+                  type="date"
+                  className={styles.datePicker}
+                  value={selectedDate}
+                  onChange={(event) => onSelectedDateChange(event.target.value)}
+                />
+              </label>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className={styles.weekButton}
+                onClick={() => onMoveWeek(1)}
+                aria-label="Next week"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
             <Button
               onClick={onImportSchedule}
               variant="outline"
@@ -171,16 +237,19 @@ export function WeeklySchedule({
             </Button>
             <Button onClick={onAddSubject} className={styles.addButton}>
               <Plus className="mr-2 size-4" />
-              Add class manually
+              Add schedule item
             </Button>
           </div>
         </div>
       </div>
 
       <div className={styles.mobileSchedule}>
-        {subjectsByDay.map(({ day, subjects: daySubjects }) => (
+        {subjectsByDay.map(({ day, subjects: daySubjects }, dayIndex) => (
           <section key={day} className={styles.mobileDay}>
-            <h3 className={styles.mobileDayTitle}>{day}</h3>
+            <h3 className={styles.mobileDayTitle}>
+              <span>{day}</span>
+              <span>{dayDates[dayIndex]}</span>
+            </h3>
 
             {daySubjects.length > 0 ? (
               <div className={styles.mobileCards}>
@@ -244,7 +313,8 @@ export function WeeklySchedule({
               className={styles.stickyDay}
               style={{ gridColumn: dayIndex + 2, gridRow: 1 }}
             >
-              {day}
+              <span>{day}</span>
+              <span>{dayDates[dayIndex]}</span>
             </div>
           ))}
 

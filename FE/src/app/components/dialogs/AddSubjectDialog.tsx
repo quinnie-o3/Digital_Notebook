@@ -6,7 +6,6 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { cn } from "../ui/utils";
 import styles from "./AddSubjectDialog.module.css";
 
@@ -27,19 +26,47 @@ const PASTEL_COLORS = [
   "#F0D4FF",
 ];
 
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function dayIndexFromDate(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return (date.getDay() + 6) % 7;
+}
+
 export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjectDialogProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState(PASTEL_COLORS[0]);
-  const [day, setDay] = useState<number>(0);
+  const [classDate, setClassDate] = useState(formatDateInputValue(new Date()));
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("09:00");
   const [room, setRoom] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const selectedDayIndex = dayIndexFromDate(classDate);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      setErrorMessage("Enter a class name before adding it.");
+      setErrorMessage("Enter a title before adding it.");
+      return;
+    }
+
+    if (!classDate) {
+      setErrorMessage("Choose a date before adding this item.");
       return;
     }
 
@@ -47,6 +74,17 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
       setErrorMessage("Choose an end time later than the start time.");
       return;
     }
+
+    const day = dayIndexFromDate(classDate);
+
+    if (day === null) {
+      setErrorMessage("Choose a valid date before adding this item.");
+      return;
+    }
+
+    const shouldRepeatWeekly = window.confirm(
+      `Add this item to every ${DAY_LABELS[day]} from ${classDate} onward?\n\nOK = repeat weekly\nCancel = only ${classDate}`,
+    );
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -60,11 +98,13 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
         endTime,
         room: room.trim() || undefined,
         source: "manual",
+        startDate: classDate,
+        endDate: shouldRepeatWeekly ? undefined : classDate,
       });
 
       setName("");
       setColor(PASTEL_COLORS[0]);
-      setDay(0);
+      setClassDate(formatDateInputValue(new Date()));
       setStartTime("08:00");
       setEndTime("09:00");
       setRoom("");
@@ -74,7 +114,7 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Could not add this class. Check that the backend is running.",
+          : "Could not add this item. Check that the backend is running.",
       );
     } finally {
       setIsSaving(false);
@@ -85,15 +125,15 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={styles.content}>
         <DialogHeader>
-          <DialogTitle>Add a new class</DialogTitle>
+          <DialogTitle>Add a schedule item</DialogTitle>
         </DialogHeader>
 
         <div className={styles.formGrid}>
           <div className={styles.field}>
-            <Label htmlFor="name">Class name</Label>
+            <Label htmlFor="name">Title</Label>
             <Input
               id="name"
-              placeholder="Example: Data Structures and Algorithms"
+              placeholder="Example: Midterm review or Data Structures"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -118,28 +158,21 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
           </div>
 
           <div className={styles.field}>
-            <Label htmlFor="day">Day</Label>
-            <Select value={day.toString()} onValueChange={(value) => setDay(Number(value))}>
-              <SelectTrigger id="day">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DAY_LABELS.map((label, index) => (
-                  <SelectItem key={label} value={index.toString()}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="classDate">Date</Label>
+            <Input
+              id="classDate"
+              type="date"
+              value={classDate}
+              onChange={(event) => setClassDate(event.target.value)}
+            />
           </div>
 
           <div className={styles.field}>
-            <Label htmlFor="room">Room</Label>
+            <Label htmlFor="weekday">Day</Label>
             <Input
-              id="room"
-              placeholder="Example: Room E3.1"
-              value={room}
-              onChange={(event) => setRoom(event.target.value)}
+              id="weekday"
+              value={selectedDayIndex === null ? "" : DAY_LABELS[selectedDayIndex]}
+              readOnly
             />
           </div>
 
@@ -166,6 +199,16 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
               />
             </div>
           </div>
+
+          <div className={styles.field}>
+            <Label htmlFor="room">Room</Label>
+            <Input
+              id="room"
+              placeholder="Example: Room E3.1"
+              value={room}
+              onChange={(event) => setRoom(event.target.value)}
+            />
+          </div>
         </div>
 
         {errorMessage ? <p className={styles.errorMessage}>{errorMessage}</p> : null}
@@ -175,7 +218,7 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
             Cancel
           </Button>
           <Button onClick={handleSubmit} className={styles.submitButton} disabled={isSaving}>
-            {isSaving ? "Adding..." : "Add class"}
+            {isSaving ? "Adding..." : "Add item"}
           </Button>
         </DialogFooter>
       </DialogContent>
