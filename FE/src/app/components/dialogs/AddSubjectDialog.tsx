@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { DAY_LABELS, UIT_PERIOD_SLOTS, minutesFromTime } from "../../lib/uitSchedule";
+import { DAY_LABELS, minutesFromTime } from "../../lib/uitSchedule";
 import { Subject } from "../../types";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -31,19 +31,20 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
   const [name, setName] = useState("");
   const [color, setColor] = useState(PASTEL_COLORS[0]);
   const [day, setDay] = useState<number>(0);
-  const [startTime, setStartTime] = useState("07:30");
+  const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("09:00");
   const [room, setRoom] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const availableEndTimes = UIT_PERIOD_SLOTS.map((slot) => slot.end).filter(
-    (time) => minutesFromTime(time) > minutesFromTime(startTime),
-  );
-
   const handleSubmit = async () => {
     if (!name.trim()) {
       setErrorMessage("Enter a class name before adding it.");
+      return;
+    }
+
+    if (!startTime || !endTime || minutesFromTime(endTime) <= minutesFromTime(startTime)) {
+      setErrorMessage("Choose an end time later than the start time.");
       return;
     }
 
@@ -64,7 +65,7 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
       setName("");
       setColor(PASTEL_COLORS[0]);
       setDay(0);
-      setStartTime("07:30");
+      setStartTime("08:00");
       setEndTime("09:00");
       setRoom("");
       onOpenChange(false);
@@ -145,47 +146,24 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
           <div className={styles.timeGrid}>
             <div className={styles.field}>
               <Label htmlFor="startTime">Start</Label>
-              <Select
+              <Input
+                id="startTime"
+                type="time"
                 value={startTime}
-                onValueChange={(value) => {
-                  setStartTime(value);
-
-                  if (minutesFromTime(endTime) <= minutesFromTime(value)) {
-                    const nextEndTime =
-                      UIT_PERIOD_SLOTS.find(
-                        (slot) => minutesFromTime(slot.end) > minutesFromTime(value),
-                      )?.end || value;
-                    setEndTime(nextEndTime);
-                  }
-                }}
-              >
-                <SelectTrigger id="startTime">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UIT_PERIOD_SLOTS.map((slot) => (
-                    <SelectItem key={slot.period} value={slot.start}>
-                      Period {slot.period} - {slot.start}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                step={300}
+                onChange={(event) => setStartTime(event.target.value)}
+              />
             </div>
 
             <div className={styles.field}>
               <Label htmlFor="endTime">End</Label>
-              <Select value={endTime} onValueChange={setEndTime}>
-                <SelectTrigger id="endTime">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableEndTimes.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                id="endTime"
+                type="time"
+                value={endTime}
+                step={300}
+                onChange={(event) => setEndTime(event.target.value)}
+              />
             </div>
           </div>
         </div>

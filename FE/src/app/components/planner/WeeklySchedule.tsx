@@ -1,6 +1,6 @@
 import { BookOpen, Plus, Upload } from "lucide-react";
 
-import { DAY_LABELS, UIT_PERIOD_SLOTS, minutesFromTime } from "../../lib/uitSchedule";
+import { DAY_LABELS, minutesFromTime } from "../../lib/uitSchedule";
 import { Subject } from "../../types";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -20,6 +20,8 @@ interface SubjectPlacement {
   dayIndex: number;
   rowIndex: number;
   rowSpan: number;
+  topOffsetMinutes: number;
+  durationMinutes: number;
 }
 
 interface ScheduleSlot {
@@ -28,34 +30,43 @@ interface ScheduleSlot {
   end: string;
 }
 
+const DEFAULT_TIMELINE_START_HOUR = 7;
+const DEFAULT_TIMELINE_END_HOUR = 21;
+const MINUTES_PER_HOUR = 60;
+
+function timeFromHour(hour: number) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function buildHourlySlots(startHour: number, endHour: number): ScheduleSlot[] {
+  return Array.from({ length: endHour - startHour }, (_, index) => {
+    const hour = startHour + index;
+    const start = timeFromHour(hour);
+    const end = timeFromHour(hour + 1);
+
+    return {
+      label: start,
+      start,
+      end,
+    };
+  });
+}
+
 function buildScheduleSlots(subjects: Subject[]): ScheduleSlot[] {
   if (!subjects.length) {
-    return UIT_PERIOD_SLOTS.map((slot) => ({
-      label: `Period ${slot.period}`,
-      start: slot.start,
-      end: slot.end,
-    }));
+    return buildHourlySlots(DEFAULT_TIMELINE_START_HOUR, DEFAULT_TIMELINE_END_HOUR);
   }
 
-  return Array.from(
-    new Map(
-      subjects.map((subject) => {
-        const defaultPeriod = UIT_PERIOD_SLOTS.find(
-          (slot) => slot.start === subject.startTime && slot.end === subject.endTime,
-        );
-        const key = `${subject.startTime}-${subject.endTime}`;
+  const subjectRanges = subjects.map((subject) => ({
+    start: minutesFromTime(subject.startTime),
+    end: minutesFromTime(subject.endTime),
+  }));
+  const earliestStart = Math.min(...subjectRanges.map((range) => range.start));
+  const latestEnd = Math.max(...subjectRanges.map((range) => range.end));
+  const startHour = Math.floor(earliestStart / MINUTES_PER_HOUR);
+  const endHour = Math.ceil(latestEnd / MINUTES_PER_HOUR);
 
-        return [
-          key,
-          {
-            label: defaultPeriod ? `Period ${defaultPeriod.period}` : "Class time",
-            start: subject.startTime,
-            end: subject.endTime,
-          },
-        ];
-      }),
-    ).values(),
-  ).sort((left, right) => minutesFromTime(left.start) - minutesFromTime(right.start));
+  return buildHourlySlots(startHour, Math.max(startHour + 1, endHour));
 }
 
 function getSubjectPlacement(subject: Subject, scheduleSlots: ScheduleSlot[]): SubjectPlacement | null {
@@ -72,6 +83,8 @@ function getSubjectPlacement(subject: Subject, scheduleSlots: ScheduleSlot[]): S
       dayIndex: subject.day,
       rowIndex: exactRowIndex,
       rowSpan: 1,
+      topOffsetMinutes: 0,
+      durationMinutes: endMinutes - startMinutes,
     };
   }
 
@@ -100,6 +113,8 @@ function getSubjectPlacement(subject: Subject, scheduleSlots: ScheduleSlot[]): S
     dayIndex: subject.day,
     rowIndex,
     rowSpan,
+    topOffsetMinutes: startMinutes - minutesFromTime(scheduleSlots[rowIndex].start),
+    durationMinutes: endMinutes - startMinutes,
   };
 }
 
@@ -137,7 +152,7 @@ export function WeeklySchedule({
 
   const gridStyle = {
     gridTemplateColumns: `minmax(10.5rem, 11.5rem) repeat(${DAY_LABELS.length}, minmax(10rem, 1fr))`,
-    gridTemplateRows: `auto repeat(${scheduleSlots.length}, minmax(6rem, auto))`,
+    gridTemplateRows: `auto repeat(${scheduleSlots.length}, var(--schedule-hour-height))`,
   };
 
   return (
@@ -271,50 +286,61 @@ export function WeeklySchedule({
             }),
           )}
 
-          {subjectPlacements.map(({ subject, dayIndex, rowIndex, rowSpan }) => (
-            <Card
-              key={subject.id}
-              className={cn(
-                styles.subjectCard,
-                activeSubjectId === subject.id && styles.subjectCardActive,
-              )}
-              style={{
-                backgroundColor: subject.color,
-                borderColor: "rgba(15, 23, 42, 0.08)",
-                gridColumn: dayIndex + 2,
-                gridRow: `${rowIndex + 2} / span ${rowSpan}`,
-              }}
-              onClick={() => onOpenNotebook(subject)}
-            >
-              <div className={styles.subjectCardTopBar} />
-              <div className={styles.subjectTitle}>{subject.name}</div>
+          {subjectPlacements.map(
+            ({ subject, dayIndex, rowIndex, rowSpan, topOffsetMinutes, durationMinutes }) => {
+              const topOffset = topOffsetMinutes / MINUTES_PER_HOUR;
+              const duration = durationMinutes / MINUTES_PER_HOUR;
 
-              <div className={styles.subjectMeta}>
-                <div>
-                  {subject.startTime} - {subject.endTime}
-                </div>
-                {subject.room ? <div>{subject.room}</div> : null}
-                {subject.courseCode ? <div>{subject.courseCode}</div> : null}
-              </div>
-
-              <div className={styles.subjectFooter}>
-                <div className={styles.subjectSource}>
-                  {subject.source === "uit" ? "Imported from UIT" : "Added manually"}
-                </div>
-                <Button
-                  type="button"
-                  size="icon"
-                  className={styles.subjectButton}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpenNotebook(subject);
+              return (
+                <Card
+                  key={subject.id}
+                  className={cn(
+                    styles.subjectCard,
+                    activeSubjectId === subject.id && styles.subjectCardActive,
+                  )}
+                  style={{
+                    backgroundColor: subject.color,
+                    borderColor: "rgba(15, 23, 42, 0.08)",
+                    gridColumn: dayIndex + 2,
+                    gridRow: `${rowIndex + 2} / span ${rowSpan}`,
+                    marginTop: `calc(${topOffset} * var(--schedule-hour-height))`,
+                    height: `calc(${duration} * var(--schedule-hour-height) + ${
+                      rowSpan - 1
+                    } * var(--schedule-grid-gap))`,
                   }}
+                  onClick={() => onOpenNotebook(subject)}
                 >
-                  <BookOpen className="size-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  <div className={styles.subjectCardTopBar} />
+                  <div className={styles.subjectTitle}>{subject.name}</div>
+
+                  <div className={styles.subjectMeta}>
+                    <div>
+                      {subject.startTime} - {subject.endTime}
+                    </div>
+                    {subject.room ? <div>{subject.room}</div> : null}
+                    {subject.courseCode ? <div>{subject.courseCode}</div> : null}
+                  </div>
+
+                  <div className={styles.subjectFooter}>
+                    <div className={styles.subjectSource}>
+                      {subject.source === "uit" ? "Imported from UIT" : "Added manually"}
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      className={styles.subjectButton}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenNotebook(subject);
+                      }}
+                    >
+                      <BookOpen className="size-4" />
+                    </Button>
+                  </div>
+                </Card>
+              );
+            },
+          )}
         </div>
       </div>
     </div>
