@@ -136,7 +136,3 @@
 .subjectCard .subjectButton {
   @apply absolute bottom-3 right-3;
 }
-
-.emptyCell {
-  @apply relative z-0 rounded-2xl border border-dashed border-amber-200 bg-white/40;
-}

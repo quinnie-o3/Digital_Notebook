@@ -261,16 +261,6 @@ export function WeeklySchedule({
             </div>
           ))}
 
-          {scheduleSlots.flatMap((_, rowIndex) =>
-            DAY_LABELS.map((_, dayIndex) => (
-              <div
-                key={`${dayIndex}-${rowIndex}`}
-                className={styles.emptyCell}
-                style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
-              />
-            )),
-          )}
-
           {subjectPlacements.map(
             ({ subject, dayIndex, rowIndex, rowSpan, topOffsetMinutes, durationMinutes }) => {
               const topOffset = topOffsetMinutes / MINUTES_PER_HOUR;
@@ -285,7 +275,7 @@ export function WeeklySchedule({
                   )}
                   style={{
                     backgroundColor: subject.color,
-                    borderColor: "rgba(15, 23, 42, 0.08)",
+                    borderColor: "rgba(15, 23, 42, 0.14)",
                     gridColumn: dayIndex + 2,
                     gridRow: `${rowIndex + 2} / span ${rowSpan}`,
                     marginTop: `calc(${topOffset} * var(--schedule-hour-height))`,
