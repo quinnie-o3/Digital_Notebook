@@ -10,5 +10,7 @@ public interface AppUserRepository extends MongoRepository<AppUser, Long> {
 
     Optional<AppUser> findByEmail(String email);
 
+    boolean existsByEmail(String email);
+
     Optional<AppUser> findByUsername(String username);
 }

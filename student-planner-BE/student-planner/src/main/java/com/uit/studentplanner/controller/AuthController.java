@@ -42,6 +42,10 @@ public class AuthController {
         String email = normalizeEmail(request == null ? null : request.email());
         String password = validatePassword(request == null ? null : request.password());
 
+        if (appUserRepository.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+        }
+
         AppUser user = new AppUser();
         LocalDateTime now = LocalDateTime.now();
         user.setEmail(email);

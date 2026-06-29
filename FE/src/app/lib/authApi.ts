@@ -156,6 +156,10 @@ async function requestAuth<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 409 && path === "/api/auth/register") {
+      throw new Error("Email is already registered.");
+    }
+
     throw new Error(`Auth request failed: ${response.status}`);
   }
 

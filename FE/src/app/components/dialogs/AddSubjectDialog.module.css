@@ -36,6 +36,34 @@
   @apply bg-slate-900 text-white hover:bg-slate-800;
 }
 
+.repeatStep {
+  @apply grid gap-4 py-4;
+}
+
+.repeatIcon {
+  @apply flex h-11 w-11 items-center justify-center rounded-md bg-slate-100 text-slate-800;
+}
+
+.repeatSummary {
+  @apply grid gap-2 rounded-md border border-slate-200 bg-white px-4 py-3;
+}
+
+.repeatTitle {
+  @apply text-sm font-semibold text-slate-950;
+}
+
+.repeatMeta {
+  @apply text-sm text-slate-600;
+}
+
+.repeatQuestion {
+  @apply border-t border-slate-100 pt-3 text-sm text-slate-800;
+}
+
+.repeatFooter {
+  @apply gap-2;
+}
+
 .errorMessage {
   @apply -mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700;
 }
