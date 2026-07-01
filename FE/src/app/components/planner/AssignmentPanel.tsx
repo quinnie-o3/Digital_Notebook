@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
-import { addDays, isWithinInterval, parseISO, startOfDay } from "date-fns";
-import { BookOpen, Clock3, MapPin, NotebookPen, Plus, Save, Trash2, X } from "lucide-react";
+import { differenceInCalendarDays, isValid, parseISO, startOfDay } from "date-fns";
+import {
+  AlertTriangle,
+  BellRing,
+  BookOpen,
+  CalendarCheck2,
+  Clock3,
+  MapPin,
+  NotebookPen,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { DAY_LABELS } from "../../lib/uitSchedule";
 import { Assignment, HomeworkItem, Subject } from "../../types";
@@ -37,6 +49,85 @@ const createAssignmentDraft = (subjectId: string, assignment: Assignment | null)
   };
 };
 
+type DeadlineTone = "overdue" | "today" | "soon" | "later" | "complete";
+
+interface DeadlineStatus {
+  tone: DeadlineTone;
+  title: string;
+  message: string;
+}
+
+function formatDayCount(days: number) {
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function getDeadlineStatus(
+  deadline: string,
+  hasHomework: boolean,
+  hasOpenHomework: boolean,
+): DeadlineStatus | null {
+  if (!deadline) {
+    return null;
+  }
+
+  const parsedDeadline = parseISO(deadline);
+
+  if (!isValid(parsedDeadline)) {
+    return null;
+  }
+
+  const daysUntilDeadline = differenceInCalendarDays(
+    startOfDay(parsedDeadline),
+    startOfDay(new Date()),
+  );
+
+  if (hasHomework && !hasOpenHomework) {
+    return {
+      tone: "complete",
+      title: "Deadline clear",
+      message: "All homework items are completed for this deadline.",
+    };
+  }
+
+  if (daysUntilDeadline < 0) {
+    return {
+      tone: "overdue",
+      title: "Overdue",
+      message: `This deadline passed ${formatDayCount(Math.abs(daysUntilDeadline))} ago.`,
+    };
+  }
+
+  if (daysUntilDeadline === 0) {
+    return {
+      tone: "today",
+      title: "Due today",
+      message: "This deadline is today. Finish the remaining homework before the day ends.",
+    };
+  }
+
+  if (daysUntilDeadline === 1) {
+    return {
+      tone: "soon",
+      title: "Due tomorrow",
+      message: "This deadline is tomorrow.",
+    };
+  }
+
+  if (daysUntilDeadline <= 3) {
+    return {
+      tone: "soon",
+      title: `Due in ${formatDayCount(daysUntilDeadline)}`,
+      message: "This deadline is coming up soon.",
+    };
+  }
+
+  return {
+    tone: "later",
+    title: `Due in ${formatDayCount(daysUntilDeadline)}`,
+    message: "This deadline is scheduled and will be tracked here.",
+  };
+}
+
 export function AssignmentPanel({
   selectedSubject,
   assignment,
@@ -69,26 +160,14 @@ export function AssignmentPanel({
     );
   }
 
-  const isDeadlineNear = (deadline: string) => {
-    if (!deadline) {
-      return false;
-    }
-
-    try {
-      const deadlineDate = parseISO(deadline);
-      const today = startOfDay(new Date());
-      const threeDaysLater = addDays(today, 3);
-      return isWithinInterval(deadlineDate, { start: today, end: threeDaysLater });
-    } catch {
-      return false;
-    }
-  };
-
   const persistedAssignment = createAssignmentDraft(selectedSubject.id, assignment);
   const hasUnsavedChanges =
     draftAssignment !== null &&
     JSON.stringify(draftAssignment) !== JSON.stringify(persistedAssignment);
   const isSaving = saveState === "saving";
+  const hasHomework = (draftAssignment?.homework.length ?? 0) > 0;
+  const hasOpenHomework = draftAssignment?.homework.some((item) => !item.completed) ?? false;
+  const deadlineStatus = getDeadlineStatus(draftAssignment?.deadline || "", hasHomework, hasOpenHomework);
 
   const updateDraftAssignment = (updater: (current: Assignment) => Assignment) => {
     setSaveState("idle");
@@ -269,13 +348,40 @@ export function AssignmentPanel({
             onChange={(event) => handleUpdateDeadline(event.target.value)}
             className={cn(
               styles.deadlineInput,
-              isDeadlineNear(draftAssignment?.deadline || "")
-                ? styles.deadlineNear
-                : styles.deadlineNormal,
+              deadlineStatus?.tone === "overdue"
+                ? styles.deadlineOverdue
+                : deadlineStatus?.tone === "today" || deadlineStatus?.tone === "soon"
+                  ? styles.deadlineNear
+                  : styles.deadlineNormal,
             )}
           />
-          {isDeadlineNear(draftAssignment?.deadline || "") ? (
-            <p className={styles.dueSoon}>Due soon.</p>
+          {deadlineStatus ? (
+            <div
+              className={cn(
+                styles.deadlineNotice,
+                deadlineStatus.tone === "overdue"
+                  ? styles.deadlineNoticeOverdue
+                  : deadlineStatus.tone === "today"
+                    ? styles.deadlineNoticeToday
+                    : deadlineStatus.tone === "soon"
+                      ? styles.deadlineNoticeSoon
+                      : deadlineStatus.tone === "complete"
+                        ? styles.deadlineNoticeComplete
+                        : styles.deadlineNoticeLater,
+              )}
+            >
+              {deadlineStatus.tone === "overdue" ? (
+                <AlertTriangle className="size-4" />
+              ) : deadlineStatus.tone === "complete" ? (
+                <CalendarCheck2 className="size-4" />
+              ) : (
+                <BellRing className="size-4" />
+              )}
+              <div>
+                <p className={styles.deadlineNoticeTitle}>{deadlineStatus.title}</p>
+                <p className={styles.deadlineNoticeMessage}>{deadlineStatus.message}</p>
+              </div>
+            </div>
           ) : null}
         </Card>
 

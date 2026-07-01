@@ -95,6 +95,7 @@ export function usePlannerState() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isNotebookOpen, setIsNotebookOpen] = useState(false);
+  const [isPlannerHydrated, setIsPlannerHydrated] = useState(false);
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const visibleSubjects = subjects.filter((subject) => isSubjectVisibleInWeek(subject, selectedDate));
   const selectedWeekLabel = buildWeekLabel(selectedDate);
@@ -116,6 +117,10 @@ export function usePlannerState() {
         }
       } catch (error) {
         console.error("Failed to hydrate planner data from Oracle.", error);
+      } finally {
+        if (!isCancelled) {
+          setIsPlannerHydrated(true);
+        }
       }
     };
 
@@ -259,6 +264,7 @@ export function usePlannerState() {
     isAddDialogOpen,
     isImportDialogOpen,
     isNotebookOpen,
+    isPlannerHydrated,
     selectedSubject,
     selectedDate,
     selectedWeekLabel,

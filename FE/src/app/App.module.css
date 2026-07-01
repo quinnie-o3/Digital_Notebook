@@ -19,6 +19,66 @@
   @apply flex-1 overflow-visible rounded-2xl border border-white/70 bg-white/45 shadow-xl backdrop-blur md:rounded-[28px] lg:rounded-[36px] lg:shadow-2xl;
 }
 
+.deadlineDigest {
+  @apply mb-3 rounded-2xl border border-white/70 bg-white/75 p-4 shadow-lg backdrop-blur md:rounded-[24px];
+}
+
+.deadlineDigestHeader {
+  @apply flex items-start justify-between gap-4;
+}
+
+.deadlineDigestTitleWrap {
+  @apply flex items-center gap-3;
+}
+
+.deadlineDigestIcon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white;
+}
+
+.deadlineDigestLabel {
+  @apply text-xs font-semibold uppercase tracking-[0.16em] text-slate-500;
+}
+
+.deadlineDigestTitle {
+  @apply text-base font-semibold text-slate-950;
+}
+
+.deadlineDigestDismiss {
+  @apply h-9 w-9 shrink-0 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900;
+}
+
+.deadlineDigestList {
+  @apply mt-3 grid gap-2 lg:grid-cols-3;
+}
+
+.deadlineDigestItem {
+  @apply flex min-w-0 gap-3 rounded-xl border px-3 py-3 text-sm;
+}
+
+.deadlineDigestItemOverdue {
+  @apply border-red-200 bg-red-50 text-red-800;
+}
+
+.deadlineDigestItemToday {
+  @apply border-rose-200 bg-rose-50 text-rose-800;
+}
+
+.deadlineDigestItemSoon {
+  @apply border-amber-200 bg-amber-50 text-amber-900;
+}
+
+.deadlineDigestItemText {
+  @apply min-w-0;
+}
+
+.deadlineDigestItemTitle {
+  @apply truncate font-semibold;
+}
+
+.deadlineDigestItemMeta {
+  @apply mt-0.5 text-xs opacity-80;
+}
+
 .loadingPage {
   @apply grid min-h-screen place-items-center bg-[#fdf9f0] text-sm font-semibold text-slate-700;
 }
