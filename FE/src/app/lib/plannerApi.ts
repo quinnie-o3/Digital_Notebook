@@ -156,7 +156,7 @@ async function getDefaultTimetable(userId: number) {
   });
 }
 
-export async function getPlannerStateFromOracle() {
+export async function getPlannerStateFromMongoDb() {
   const userId = await getDefaultUserId();
   const [subjects, timetables, classes, sessions, lessonNotes, tasks] = await Promise.all([
     requestJson<ApiSubject[]>(`/api/subjects/user/${userId}`),
@@ -197,7 +197,7 @@ export async function getPlannerStateFromOracle() {
   };
 }
 
-export async function getAssignmentForSessionFromOracle(subjectId: string) {
+export async function getAssignmentForSessionFromMongoDb(subjectId: string) {
   const sessionId = Number(subjectId);
   const [session, lessonNotes, tasks] = await Promise.all([
     requestJson<ApiClassSession>(`/api/class-sessions/${sessionId}`),
@@ -208,7 +208,7 @@ export async function getAssignmentForSessionFromOracle(subjectId: string) {
   return toAssignment(session, lessonNotes, tasks);
 }
 
-export async function createCourseInOracle(subjectData: Omit<Subject, "id">) {
+export async function createCourseInMongoDb(subjectData: Omit<Subject, "id">) {
   const userId = await getDefaultUserId();
   const timetable = await getDefaultTimetable(userId);
   const subject = await requestJson<ApiSubject>("/api/subjects", {
@@ -303,7 +303,7 @@ async function createImportItems(importId: number, subjects: Omit<Subject, "id">
   );
 }
 
-export async function importScheduleToOracle(
+export async function importScheduleToMongoDb(
   subjects: Omit<Subject, "id">[],
   mode: "replace" | "append",
   sourceText: string,
@@ -320,7 +320,7 @@ export async function importScheduleToOracle(
     await createImportItems(importFile.importId, subjects);
     await Promise.all(
       subjects.map((subject) =>
-        createCourseInOracle({
+        createCourseInMongoDb({
           ...subject,
           source: "uit",
         }),
@@ -337,7 +337,7 @@ export async function importScheduleToOracle(
   }
 }
 
-export async function saveAssignmentToOracle(assignment: Assignment) {
+export async function saveAssignmentToMongoDb(assignment: Assignment) {
   const sessionId = Number(assignment.subjectId);
   const existingNotes = await requestJson<ApiLessonNote[]>(`/api/lesson-notes/session/${sessionId}`);
   const existingNote = existingNotes[0];

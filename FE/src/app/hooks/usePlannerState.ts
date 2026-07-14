@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
 import {
-  createCourseInOracle,
-  getAssignmentForSessionFromOracle,
-  getPlannerStateFromOracle,
-  importScheduleToOracle,
-  saveAssignmentToOracle,
+  createCourseInMongoDb,
+  getAssignmentForSessionFromMongoDb,
+  getPlannerStateFromMongoDb,
+  importScheduleToMongoDb,
+  saveAssignmentToMongoDb,
 } from "../lib/plannerApi";
 import { UITScheduleImportResult } from "../lib/uitSchedule";
 import { Assignment, Subject } from "../types";
@@ -105,7 +105,7 @@ export function usePlannerState() {
 
     const hydratePlannerFromDatabase = async () => {
       try {
-        const databaseState = await getPlannerStateFromOracle();
+        const databaseState = await getPlannerStateFromMongoDb();
 
         if (isCancelled) {
           return;
@@ -116,7 +116,7 @@ export function usePlannerState() {
           setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
         }
       } catch (error) {
-        console.error("Failed to hydrate planner data from Oracle.", error);
+        console.error("Failed to hydrate planner data from MongoDB.", error);
       } finally {
         if (!isCancelled) {
           setIsPlannerHydrated(true);
@@ -149,7 +149,7 @@ export function usePlannerState() {
   }, [selectedDate, selectedSubject, subjects]);
 
   const handleAddSubject = async (subjectData: Omit<Subject, "id">) => {
-    const newSubject = await createCourseInOracle(subjectData);
+    const newSubject = await createCourseInMongoDb(subjectData);
 
     setSubjects((previous) => [...previous, newSubject]);
     setAssignments((previous) => [...previous, createDefaultAssignment(newSubject.id)]);
@@ -168,7 +168,7 @@ export function usePlannerState() {
   };
 
   const handleSaveAssignment = async (assignment: Assignment) => {
-    const savedAssignment = await saveAssignmentToOracle(assignment);
+    const savedAssignment = await saveAssignmentToMongoDb(assignment);
 
     setAssignments((previous) => {
       const hasExistingAssignment = previous.some((item) => item.subjectId === savedAssignment.subjectId);
@@ -189,7 +189,7 @@ export function usePlannerState() {
 
     void (async () => {
       try {
-        const refreshedAssignment = await getAssignmentForSessionFromOracle(subject.id);
+        const refreshedAssignment = await getAssignmentForSessionFromMongoDb(subject.id);
 
         setAssignments((previous) => {
           const hasExistingAssignment = previous.some(
@@ -218,8 +218,8 @@ export function usePlannerState() {
     void (async () => {
       try {
         setImportFeedback("Importing schedule from UIT Student...");
-        await importScheduleToOracle(result.subjects, mode, sourceText);
-        const databaseState = await getPlannerStateFromOracle();
+        await importScheduleToMongoDb(result.subjects, mode, sourceText);
+        const databaseState = await getPlannerStateFromMongoDb();
 
         setSubjects(databaseState.subjects);
         setAssignments(buildAssignmentsForSubjects(databaseState.subjects, databaseState.assignments));
