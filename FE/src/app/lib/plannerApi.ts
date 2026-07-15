@@ -81,6 +81,10 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Request failed: ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
@@ -236,16 +240,6 @@ export async function createCourseInMongoDb(subjectData: Omit<Subject, "id">) {
   return toSubject(session, classItem, subject);
 }
 
-async function deleteCurrentScheduleForUser() {
-  const [userSubjects, timetables] = await Promise.all([
-    requestJson<ApiSubject[]>("/api/subjects"),
-    requestJson<ApiTimetable[]>("/api/timetables"),
-  ]);
-
-  await Promise.all(userSubjects.map((subject) => deleteRequest(`/api/subjects/${subject.subjectId}`)));
-  await Promise.all(timetables.map((timetable) => deleteRequest(`/api/timetables/${timetable.timetableId}`)));
-}
-
 async function createImportRecord(sourceText: string) {
   return requestJson<ApiImportFile>("/api/import-files", {
     method: "POST",
@@ -301,20 +295,11 @@ export async function importScheduleToMongoDb(
   const importFile = await createImportRecord(sourceText);
 
   try {
-    if (mode === "replace") {
-      await deleteCurrentScheduleForUser();
-    }
-
-    await getDefaultTimetable();
     await createImportItems(importFile.importId, subjects);
-    await Promise.all(
-      subjects.map((subject) =>
-        createCourseInMongoDb({
-          ...subject,
-          source: "uit",
-        }),
-      ),
-    );
+    await requestJson<void>("/api/planner-import", {
+      method: "POST",
+      body: JSON.stringify({ mode, subjects }),
+    });
     await completeImportRecord(importFile, "completed");
   } catch (error) {
     await completeImportRecord(
