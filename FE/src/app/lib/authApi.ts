@@ -18,50 +18,10 @@ interface AuthResponse {
 
 const ACCESS_TOKEN_STORAGE_KEY = "digitalNotebookAccessToken";
 const REFRESH_TOKEN_STORAGE_KEY = "digitalNotebookRefreshToken";
-const DEVICE_ID_STORAGE_KEY = "digitalNotebookDeviceId";
-
 let fallbackAccessToken: string | null = null;
 let fallbackRefreshToken: string | null = null;
-let fallbackDeviceId: string | null = null;
 let currentUser: ApiUser | null = null;
 let sessionPromise: Promise<ApiUser> | null = null;
-
-function createDeviceId() {
-  const randomId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-  return randomId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32);
-}
-
-function getDeviceId() {
-  if (fallbackDeviceId) {
-    return fallbackDeviceId;
-  }
-
-  if (typeof window === "undefined") {
-    fallbackDeviceId = createDeviceId();
-    return fallbackDeviceId;
-  }
-
-  try {
-    const existingDeviceId = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
-
-    if (existingDeviceId) {
-      fallbackDeviceId = existingDeviceId;
-      return existingDeviceId;
-    }
-
-    const nextDeviceId = createDeviceId();
-    window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, nextDeviceId);
-    fallbackDeviceId = nextDeviceId;
-    return nextDeviceId;
-  } catch {
-    fallbackDeviceId = createDeviceId();
-    return fallbackDeviceId;
-  }
-}
 
 function getAccessToken() {
   if (typeof window === "undefined") {
@@ -177,14 +137,6 @@ function applyAuthResponse(authResponse: AuthResponse) {
   return authResponse.user;
 }
 
-async function startDeviceSession() {
-  const authResponse = await requestAuth<AuthResponse>("/api/auth/device-session", {
-    deviceId: getDeviceId(),
-  });
-
-  return applyAuthResponse(authResponse);
-}
-
 async function refreshSession(refreshToken: string) {
   const authResponse = await requestAuth<AuthResponse>("/api/auth/refresh", {
     refreshToken,
@@ -193,18 +145,22 @@ async function refreshSession(refreshToken: string) {
   return applyAuthResponse(authResponse);
 }
 
-async function refreshOrStartSession() {
+async function refreshStoredSession() {
   const refreshToken = getRefreshToken();
 
-  if (refreshToken) {
-    try {
-      return await refreshSession(refreshToken);
-    } catch {
-      clearStoredTokens();
-    }
+  if (!refreshToken) {
+    throw new Error('Authentication required.');
   }
 
-  return startDeviceSession();
+  try {
+    return await refreshSession(refreshToken);
+  } catch {
+    clearStoredTokens();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-session-expired"));
+    }
+    throw new Error('Your session has expired. Please sign in again.');
+  }
 }
 
 async function loadSession() {
@@ -212,7 +168,7 @@ async function loadSession() {
     return currentUser;
   }
 
-  return refreshOrStartSession();
+  return refreshStoredSession();
 }
 
 async function loadStoredSession() {
@@ -312,6 +268,6 @@ async function fetchWithCurrentAccessToken(path: string, init: RequestInit | und
   }
 
   clearAccessToken();
-  await refreshOrStartSession();
+  await refreshStoredSession();
   return fetchWithCurrentAccessToken(path, init, false);
 }

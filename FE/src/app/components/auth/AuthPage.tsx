@@ -10,12 +10,14 @@ import styles from "./AuthPage.module.css";
 
 interface AuthPageProps {
   onAuthenticated: (user: ApiUser) => void;
+  initialMode?: AuthMode;
+  onCancel?: () => void;
 }
 
 type AuthMode = "login" | "signup";
 
-export function AuthPage({ onAuthenticated }: AuthPageProps) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthPage({ onAuthenticated, initialMode = "login", onCancel }: AuthPageProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -58,6 +60,11 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   return (
     <main className={styles.page}>
       <section className={styles.panel}>
+        {onCancel ? (
+          <button type="button" className={styles.backButton} onClick={onCancel}>
+            Back to dashboard
+          </button>
+        ) : null}
         <div className={styles.brand}>
           <div className={styles.brandIcon}>
             <BookOpen className="size-6" />
@@ -125,6 +132,19 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             {isSubmitting ? "Please wait..." : isLogin ? "Login" : "Create account"}
           </Button>
         </form>
+
+        <p className={styles.accountPrompt}>
+          {isLogin ? "Don't have an account?" : "Have an account?"}{" "}
+          <button
+            type="button"
+            onClick={() => {
+              setMode(isLogin ? "signup" : "login");
+              setErrorMessage(null);
+            }}
+          >
+            {isLogin ? "Sign up" : "Sign in"}
+          </button>
+        </p>
       </section>
     </main>
   );

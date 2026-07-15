@@ -5,11 +5,21 @@ import styles from "./PlannerHeader.module.css";
 
 interface PlannerHeaderProps {
   importFeedback: string | null;
+  isAuthenticated: boolean;
   onLogout: () => void;
   onOpenUserProfile: () => void;
+  onSignIn: () => void;
+  onSignUp: () => void;
 }
 
-export function PlannerHeader({ importFeedback, onLogout, onOpenUserProfile }: PlannerHeaderProps) {
+export function PlannerHeader({
+  importFeedback,
+  isAuthenticated,
+  onLogout,
+  onOpenUserProfile,
+  onSignIn,
+  onSignUp,
+}: PlannerHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.topBar}>
@@ -28,15 +38,21 @@ export function PlannerHeader({ importFeedback, onLogout, onOpenUserProfile }: P
           >
             <UserRound className="size-5" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className={styles.profileButton}
-            onClick={onLogout}
-            aria-label="Log out"
-          >
-            <LogOut className="size-5" />
-          </Button>
+          {isAuthenticated ? (
+            <Button variant="outline" className={styles.authButton} onClick={onLogout}>
+              <LogOut className="size-4" />
+              Sign out
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" className={styles.authButton} onClick={onSignUp}>
+                Sign up
+              </Button>
+              <Button className={styles.signInButton} onClick={onSignIn}>
+                Sign in
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

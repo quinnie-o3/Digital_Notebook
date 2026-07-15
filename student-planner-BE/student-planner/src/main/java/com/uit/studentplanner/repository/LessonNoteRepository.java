@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LessonNoteRepository extends MongoRepository<LessonNote, Long> {
 
-    List<LessonNote> findBySessionId(Long sessionId);
+    List<LessonNote> findBySessionIdAndUserId(Long sessionId, Long userId);
 }

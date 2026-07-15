@@ -3,15 +3,20 @@ package com.uit.studentplanner.entity;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "tasks")
 @Data
-public class Task {
+public class Task implements OwnedResource {
 
     @Id
     private Long taskId;
+
+    @Field("user_id")
+    @Indexed
+    private Long userId;
 
     @Field("note_id")
     private Long noteId;

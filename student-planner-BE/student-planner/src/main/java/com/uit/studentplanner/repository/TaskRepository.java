@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TaskRepository extends MongoRepository<Task, Long> {
 
-    List<Task> findBySessionId(Long sessionId);
+    List<Task> findBySessionIdAndUserId(Long sessionId, Long userId);
 
-    List<Task> findByNoteId(Long noteId);
+    List<Task> findByNoteIdAndUserId(Long noteId, Long userId);
 }

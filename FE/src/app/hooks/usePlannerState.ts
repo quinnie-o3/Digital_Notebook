@@ -86,7 +86,7 @@ function buildWeekLabel(selectedDate: string) {
   return `${formatter.format(weekStart)} - ${formatter.format(weekEnd)}`;
 }
 
-export function usePlannerState() {
+export function usePlannerState(isAuthenticated: boolean) {
   const [bootstrap] = useState(loadInitialPlannerState);
   const [subjects, setSubjects] = useState<Subject[]>(bootstrap.subjects);
   const [assignments, setAssignments] = useState<Assignment[]>(bootstrap.assignments);
@@ -101,6 +101,13 @@ export function usePlannerState() {
   const selectedWeekLabel = buildWeekLabel(selectedDate);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setSubjects([]);
+      setAssignments([]);
+      setIsPlannerHydrated(true);
+      return;
+    }
+
     let isCancelled = false;
 
     const hydratePlannerFromDatabase = async () => {
@@ -129,7 +136,7 @@ export function usePlannerState() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!selectedSubject) {

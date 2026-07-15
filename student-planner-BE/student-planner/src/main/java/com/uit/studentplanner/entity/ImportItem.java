@@ -4,15 +4,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "import_items")
 @Data
-public class ImportItem {
+public class ImportItem implements OwnedResource {
 
     @Id
     private Long itemId;
+
+    @Field("user_id")
+    @Indexed
+    private Long userId;
 
     @Field("import_id")
     private Long importId;

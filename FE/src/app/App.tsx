@@ -4,6 +4,7 @@ import { AlertTriangle, BellRing, CalendarCheck2, X } from "lucide-react";
 
 import { AuthPage } from "./components/auth/AuthPage";
 import { AddSubjectDialog } from "./components/dialogs/AddSubjectDialog";
+import { ChangePasswordDialog } from "./components/dialogs/ChangePasswordDialog";
 import { ImportUITScheduleDialog } from "./components/dialogs/ImportUITScheduleDialog";
 import { UserProfileDialog } from "./components/dialogs/UserProfileDialog";
 import { NotebookSheet } from "./components/planner/NotebookSheet";
@@ -88,6 +89,7 @@ function buildDeadlineAlerts(assignments: Assignment[], subjects: Subject[]) {
 export default function App() {
   const [authenticatedUser, setAuthenticatedUser] = useState<ApiUser | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -109,20 +111,54 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setAuthenticatedUser(null);
+      setAuthMode("login");
+    };
+
+    window.addEventListener("auth-session-expired", handleExpiredSession);
+    return () => window.removeEventListener("auth-session-expired", handleExpiredSession);
+  }, []);
+
   if (isRestoringSession) {
     return <div className={styles.loadingPage}>Loading planner...</div>;
   }
 
-  if (!authenticatedUser) {
-    return <AuthPage onAuthenticated={setAuthenticatedUser} />;
+  if (authMode) {
+    return (
+      <AuthPage
+        initialMode={authMode}
+        onCancel={() => setAuthMode(null)}
+        onAuthenticated={(user) => {
+          setAuthenticatedUser(user);
+          setAuthMode(null);
+        }}
+      />
+    );
   }
 
-  return <PlannerApp onLogout={() => setAuthenticatedUser(null)} />;
+  return (
+    <PlannerApp
+      authenticatedUser={authenticatedUser}
+      onLogout={() => setAuthenticatedUser(null)}
+      onRequestSignIn={() => setAuthMode("login")}
+      onRequestSignUp={() => setAuthMode("signup")}
+    />
+  );
 }
 
-function PlannerApp({ onLogout }: { onLogout: () => void }) {
-  const planner = usePlannerState();
+interface PlannerAppProps {
+  authenticatedUser: ApiUser | null;
+  onLogout: () => void;
+  onRequestSignIn: () => void;
+  onRequestSignUp: () => void;
+}
+
+function PlannerApp({ authenticatedUser, onLogout, onRequestSignIn, onRequestSignUp }: PlannerAppProps) {
+  const planner = usePlannerState(Boolean(authenticatedUser));
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isDeadlineDigestDismissed, setIsDeadlineDigestDismissed] = useState(false);
   const deadlineAlerts = buildDeadlineAlerts(planner.assignments, planner.subjects);
 
@@ -140,8 +176,13 @@ function PlannerApp({ onLogout }: { onLogout: () => void }) {
       <div className={styles.layout}>
         <PlannerHeader
           importFeedback={planner.importFeedback}
+          isAuthenticated={Boolean(authenticatedUser)}
           onLogout={handleLogout}
-          onOpenUserProfile={() => setIsUserProfileOpen(true)}
+          onOpenUserProfile={() =>
+            authenticatedUser ? setIsUserProfileOpen(true) : onRequestSignUp()
+          }
+          onSignIn={onRequestSignIn}
+          onSignUp={onRequestSignUp}
         />
 
         {planner.isPlannerHydrated && deadlineAlerts.length > 0 && !isDeadlineDigestDismissed ? (
@@ -214,11 +255,21 @@ function PlannerApp({ onLogout }: { onLogout: () => void }) {
             activeSubjectId={planner.selectedSubject?.id}
             selectedDate={planner.selectedDate}
             selectedWeekLabel={planner.selectedWeekLabel}
-            onOpenNotebook={planner.handleOpenNotebook}
-            onAddSubject={() => planner.setIsAddDialogOpen(true)}
-            onImportSchedule={() => planner.setIsImportDialogOpen(true)}
-            onMoveWeek={planner.handleMoveWeek}
-            onSelectedDateChange={planner.setSelectedDate}
+            onOpenNotebook={(subject) =>
+              authenticatedUser ? planner.handleOpenNotebook(subject) : onRequestSignUp()
+            }
+            onAddSubject={() =>
+              authenticatedUser ? planner.setIsAddDialogOpen(true) : onRequestSignUp()
+            }
+            onImportSchedule={() =>
+              authenticatedUser ? planner.setIsImportDialogOpen(true) : onRequestSignUp()
+            }
+            onMoveWeek={(direction) =>
+              authenticatedUser ? planner.handleMoveWeek(direction) : onRequestSignUp()
+            }
+            onSelectedDateChange={(date) =>
+              authenticatedUser ? planner.setSelectedDate(date) : onRequestSignUp()
+            }
           />
         </main>
       </div>
@@ -243,7 +294,26 @@ function PlannerApp({ onLogout }: { onLogout: () => void }) {
         onSaveAssignment={planner.handleSaveAssignment}
       />
 
-      <UserProfileDialog open={isUserProfileOpen} onOpenChange={setIsUserProfileOpen} />
+      {authenticatedUser ? (
+        <>
+          <UserProfileDialog
+            open={isUserProfileOpen}
+            onOpenChange={setIsUserProfileOpen}
+            onEditPassword={() => {
+              setIsUserProfileOpen(false);
+              setIsChangePasswordOpen(true);
+            }}
+          />
+          <ChangePasswordDialog
+            open={isChangePasswordOpen}
+            onOpenChange={setIsChangePasswordOpen}
+            onBack={() => {
+              setIsChangePasswordOpen(false);
+              setIsUserProfileOpen(true);
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

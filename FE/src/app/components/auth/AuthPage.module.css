@@ -11,6 +11,10 @@
   @apply w-full max-w-md rounded-2xl border border-amber-200/70 bg-white/85 p-5 shadow-xl backdrop-blur;
 }
 
+.backButton {
+  @apply mb-4 text-xs font-semibold text-slate-600 hover:text-slate-950;
+}
+
 .brand {
   @apply flex items-center gap-3;
 }
@@ -58,4 +62,12 @@
 
 .submitButton {
   @apply mt-1 w-full gap-2 bg-slate-900 text-white hover:bg-slate-800;
+}
+
+.accountPrompt {
+  @apply mt-5 text-center text-sm text-slate-600;
+}
+
+.accountPrompt button {
+  @apply font-semibold text-amber-800 underline-offset-4 hover:underline;
 }

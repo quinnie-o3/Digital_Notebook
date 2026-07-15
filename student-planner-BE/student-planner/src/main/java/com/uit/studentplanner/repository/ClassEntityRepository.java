@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ClassEntityRepository extends MongoRepository<ClassEntity, Long> {
 
-    List<ClassEntity> findByTimetableId(Long timetableId);
+    List<ClassEntity> findByTimetableIdAndUserId(Long timetableId, Long userId);
 
-    List<ClassEntity> findBySubjectId(Long subjectId);
+    List<ClassEntity> findBySubjectIdAndUserId(Long subjectId, Long userId);
 }

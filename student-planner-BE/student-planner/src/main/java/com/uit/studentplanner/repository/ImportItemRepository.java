@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ImportItemRepository extends MongoRepository<ImportItem, Long> {
 
-    List<ImportItem> findByImportId(Long importId);
+    List<ImportItem> findByImportIdAndUserId(Long importId, Long userId);
 }

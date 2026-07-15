@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ClassSessionRepository extends MongoRepository<ClassSession, Long> {
 
-    List<ClassSession> findByClassId(Long classId);
+    List<ClassSession> findByClassIdAndUserId(Long classId, Long userId);
 }

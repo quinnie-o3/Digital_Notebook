@@ -4,15 +4,20 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "class_sessions")
 @Data
-public class ClassSession {
+public class ClassSession implements OwnedResource {
 
     @Id
     private Long sessionId;
+
+    @Field("user_id")
+    @Indexed
+    private Long userId;
 
     @Field("class_id")
     private Long classId;

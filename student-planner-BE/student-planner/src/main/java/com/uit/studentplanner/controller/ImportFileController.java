@@ -2,9 +2,7 @@ package com.uit.studentplanner.controller;
 
 import com.uit.studentplanner.entity.ImportFile;
 import com.uit.studentplanner.repository.ImportFileRepository;
-import java.util.List;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,8 +12,8 @@ public class ImportFileController extends CrudController<ImportFile> {
 
     private final ImportFileRepository repository;
 
-    public ImportFileController(ImportFileRepository repository) {
-        super(repository);
+    public ImportFileController(ImportFileRepository repository, MongoTemplate mongoTemplate) {
+        super(repository, mongoTemplate, ImportFile.class);
         this.repository = repository;
     }
 
@@ -24,8 +22,4 @@ public class ImportFileController extends CrudController<ImportFile> {
         entity.setImportId(id);
     }
 
-    @GetMapping("/user/{userId}")
-    public List<ImportFile> getByUserId(@PathVariable Long userId) {
-        return repository.findByUserId(userId);
-    }
 }

@@ -1,5 +1,5 @@
 import { Assignment, HomeworkItem, Subject } from "../types";
-import { authFetch, getAuthenticatedUser } from "./authApi";
+import { authFetch } from "./authApi";
 
 interface ApiTimetable {
   timetableId: number;
@@ -133,13 +133,8 @@ function toAssignment(session: ApiClassSession, notes: ApiLessonNote[], tasks: A
   };
 }
 
-async function getDefaultUserId() {
-  const user = await getAuthenticatedUser();
-  return user.userId;
-}
-
-async function getDefaultTimetable(userId: number) {
-  const timetables = await requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`);
+async function getDefaultTimetable() {
+  const timetables = await requestJson<ApiTimetable[]>("/api/timetables");
   const activeTimetable = timetables.find((timetable) => timetable.active === 1) || timetables[0];
 
   if (activeTimetable) {
@@ -149,7 +144,6 @@ async function getDefaultTimetable(userId: number) {
   return requestJson<ApiTimetable>("/api/timetables", {
     method: "POST",
     body: JSON.stringify({
-      userId,
       name: "My Timetable",
       active: 1,
     }),
@@ -157,10 +151,9 @@ async function getDefaultTimetable(userId: number) {
 }
 
 export async function getPlannerStateFromMongoDb() {
-  const userId = await getDefaultUserId();
   const [subjects, timetables, classes, sessions, lessonNotes, tasks] = await Promise.all([
-    requestJson<ApiSubject[]>(`/api/subjects/user/${userId}`),
-    requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`),
+    requestJson<ApiSubject[]>("/api/subjects"),
+    requestJson<ApiTimetable[]>("/api/timetables"),
     requestJson<ApiClass[]>("/api/classes"),
     requestJson<ApiClassSession[]>("/api/class-sessions"),
     requestJson<ApiLessonNote[]>("/api/lesson-notes"),
@@ -209,12 +202,10 @@ export async function getAssignmentForSessionFromMongoDb(subjectId: string) {
 }
 
 export async function createCourseInMongoDb(subjectData: Omit<Subject, "id">) {
-  const userId = await getDefaultUserId();
-  const timetable = await getDefaultTimetable(userId);
+  const timetable = await getDefaultTimetable();
   const subject = await requestJson<ApiSubject>("/api/subjects", {
     method: "POST",
     body: JSON.stringify({
-      userId,
       subjectName: subjectData.name,
       subjectCode: subjectData.courseCode,
       colorCode: subjectData.color,
@@ -245,21 +236,20 @@ export async function createCourseInMongoDb(subjectData: Omit<Subject, "id">) {
   return toSubject(session, classItem, subject);
 }
 
-async function deleteCurrentScheduleForUser(userId: number) {
+async function deleteCurrentScheduleForUser() {
   const [userSubjects, timetables] = await Promise.all([
-    requestJson<ApiSubject[]>(`/api/subjects/user/${userId}`),
-    requestJson<ApiTimetable[]>(`/api/timetables/user/${userId}`),
+    requestJson<ApiSubject[]>("/api/subjects"),
+    requestJson<ApiTimetable[]>("/api/timetables"),
   ]);
 
   await Promise.all(userSubjects.map((subject) => deleteRequest(`/api/subjects/${subject.subjectId}`)));
   await Promise.all(timetables.map((timetable) => deleteRequest(`/api/timetables/${timetable.timetableId}`)));
 }
 
-async function createImportRecord(userId: number, sourceText: string) {
+async function createImportRecord(sourceText: string) {
   return requestJson<ApiImportFile>("/api/import-files", {
     method: "POST",
     body: JSON.stringify({
-      userId,
       fileName: "UIT Student pasted schedule",
       fileType: "text/plain",
       fileUrl: null,
@@ -308,15 +298,14 @@ export async function importScheduleToMongoDb(
   mode: "replace" | "append",
   sourceText: string,
 ) {
-  const userId = await getDefaultUserId();
-  const importFile = await createImportRecord(userId, sourceText);
+  const importFile = await createImportRecord(sourceText);
 
   try {
     if (mode === "replace") {
-      await deleteCurrentScheduleForUser(userId);
+      await deleteCurrentScheduleForUser();
     }
 
-    await getDefaultTimetable(userId);
+    await getDefaultTimetable();
     await createImportItems(importFile.importId, subjects);
     await Promise.all(
       subjects.map((subject) =>

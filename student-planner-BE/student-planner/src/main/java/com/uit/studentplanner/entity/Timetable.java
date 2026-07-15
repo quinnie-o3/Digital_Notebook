@@ -4,17 +4,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "timetables")
 @Data
-public class Timetable {
+public class Timetable implements OwnedResource {
 
     @Id
     private Long timetableId;
 
     @Field("user_id")
+    @Indexed
     private Long userId;
 
     @Field("name")

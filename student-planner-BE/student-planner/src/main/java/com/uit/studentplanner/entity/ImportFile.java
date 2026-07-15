@@ -3,17 +3,19 @@ package com.uit.studentplanner.entity;
 import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "import_files")
 @Data
-public class ImportFile {
+public class ImportFile implements OwnedResource {
 
     @Id
     private Long importId;
 
     @Field("user_id")
+    @Indexed
     private Long userId;
 
     @Field("file_name")
