@@ -1,73 +1,139 @@
 # Digital Student Planner
 
-Digital Student Planner là ứng dụng web giúp sinh viên quản lý thời khóa biểu, ghi chú bài học và bài tập theo từng buổi học. Dự án được xây theo mô hình full-stack: frontend React/Vite giao tiếp với backend Spring Boot REST API, dữ liệu lưu trong MongoDB.
+Digital Student Planner là ứng dụng web full-stack giúp sinh viên quản lý thời khóa biểu, ghi chú bài học, bài tập và deadline theo từng buổi học.
 
-README này được viết theo hướng vừa để chạy dự án, vừa để bạn có thể học lại kiến trúc và giải thích trong phỏng vấn.
+Ứng dụng sử dụng React + TypeScript ở frontend, Spring Boot REST API ở backend và MongoDB để lưu trữ dữ liệu. Hệ thống hỗ trợ tài khoản người dùng, access token/refresh token, phân quyền dữ liệu theo chủ sở hữu và khôi phục dữ liệu planner sau khi tải lại trang hoặc đăng nhập lại.
+
+- Repository: `https://github.com/quinnie-o3/Digital_Notebook`
+- Live frontend: `https://digital-notebook-rho.vercel.app`
+- Backend API documentation: `student-planner-BE/student-planner/API.md`
+- Swagger UI khi chạy backend: `http://localhost:8080/swagger-ui/index.html`
+
+> **Trạng thái import lịch nguyên khối:** Luồng `POST /api/planner-import` và cơ chế staging/cleanup đã được xây dựng trong working tree local nhưng chưa được commit vào nhánh chính tại thời điểm cập nhật tài liệu này.
+
+---
 
 ## Mục Lục
 
 - [Tính năng chính](#tính-năng-chính)
 - [Kiến trúc tổng quan](#kiến-trúc-tổng-quan)
 - [Công nghệ sử dụng](#công-nghệ-sử-dụng)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Cấu trúc dự án](#cấu-trúc-dự-án)
+- [Luồng xác thực và giao diện khách](#luồng-xác-thực-và-giao-diện-khách)
+- [Access token và refresh token](#access-token-và-refresh-token)
+- [Thông tin người dùng và đổi mật khẩu](#thông-tin-người-dùng-và-đổi-mật-khẩu)
+- [Phân quyền ownership](#phân-quyền-ownership)
 - [Luồng hoạt động chính](#luồng-hoạt-động-chính)
 - [Thiết kế dữ liệu](#thiết-kế-dữ-liệu)
-- [Authentication và authorization](#authentication-và-authorization)
 - [API chính](#api-chính)
+- [Migration dữ liệu ownership](#migration-dữ-liệu-ownership)
+- [Persistence](#persistence)
+- [Automated tests](#automated-tests)
 - [Cách chạy local](#cách-chạy-local)
 - [Deploy](#deploy)
-- [Điểm cần nắm khi đi phỏng vấn](#điểm-cần-nắm-khi-đi-phỏng-vấn)
+- [Trạng thái triển khai](#trạng-thái-triển-khai)
+- [Điểm cần nắm khi phỏng vấn](#điểm-cần-nắm-khi-phỏng-vấn)
+
+---
 
 ## Tính Năng Chính
 
-Ứng dụng hiện hỗ trợ các nhóm chức năng sau:
+### Authentication
 
-- Đăng ký, đăng nhập bằng email/password.
-- Tạo phiên dùng nhanh theo thiết bị bằng device session.
-- Tự động khôi phục phiên đăng nhập bằng refresh token.
+- Đăng ký tài khoản bằng email và mật khẩu.
+- Đăng nhập để nhận access token và refresh token.
+- Tự động kiểm tra refresh token khi ứng dụng khởi động.
+- Tự động refresh access token và retry request một lần khi backend trả `401 Unauthorized`.
+- Đăng xuất và revoke refresh token.
+- Chuyển người dùng về màn hình Sign in khi phiên hết hạn.
+
+### Guest experience
+
+- Người chưa đăng nhập vẫn xem được dashboard rỗng.
+- Guest không tải dữ liệu planner từ backend.
+- Khi guest thực hiện tác vụ planner, ứng dụng chuyển sang màn hình Sign up.
+- Header hiển thị:
+  - Avatar.
+  - `Sign up` và `Sign in` khi chưa đăng nhập.
+  - `Sign out` khi đã đăng nhập.
+- Trang Sign up có liên kết `Have an account? Sign in`.
+- Trang Sign in có liên kết `Don't have an account? Sign up`.
+
+### Planner
+
 - Quản lý thời khóa biểu theo tuần.
-- Thêm môn học thủ công gồm tên môn, mã môn, màu, thứ, giờ học, phòng học.
-- Import thời khóa biểu từ UIT Student bằng nội dung copy/paste hoặc file lịch dạng `.ics`.
-- Chọn từng buổi học để mở sổ tay ghi chú.
-- Lưu ghi chú bài học, danh sách bài tập và deadline.
-- Hiển thị cảnh báo deadline cho bài tập quá hạn, đến hạn hôm nay hoặc sắp đến hạn.
-- Quản lý hồ sơ người dùng.
-- Backend cung cấp Swagger UI/OpenAPI để kiểm tra API.
+- Thêm môn học thủ công gồm:
+  - Tên môn.
+  - Mã môn.
+  - Màu hiển thị.
+  - Thứ học.
+  - Giờ bắt đầu và kết thúc.
+  - Phòng học.
+  - Khoảng ngày áp dụng.
+- Chọn một buổi học để mở notebook.
+- Lưu ghi chú bài học.
+- Quản lý bài tập, deadline, trạng thái và độ ưu tiên.
+- Hiển thị cảnh báo deadline quá hạn, đến hạn hôm nay hoặc sắp đến hạn.
+- Dữ liệu được lưu trong MongoDB và được tải lại sau khi refresh trang hoặc đăng nhập lại.
+
+### Import thời khóa biểu
+
+- Parse dữ liệu copy từ UIT Student.
+- Parse file lịch `.ics`.
+- Preview dữ liệu trước khi import.
+- Hỗ trợ hai chế độ:
+  - `append`: thêm vào lịch hiện tại.
+  - `replace`: tạo lịch mới hoàn chỉnh trước khi dọn lịch cũ.
+- Backend kiểm tra toàn bộ request trước khi ghi dữ liệu.
+- Khi import lỗi, dữ liệu staging được xóa và lịch cũ được giữ nguyên.
+
+### User information
+
+- Xem thông tin tài khoản ở chế độ chỉ đọc:
+  - Name.
+  - Avatar URL.
+  - Email.
+  - Password đã được che.
+- Chuyển sang màn hình Change password riêng.
+- Validate mật khẩu ở cả frontend và backend.
+
+---
 
 ## Kiến Trúc Tổng Quan
 
-Dự án gồm hai phần chính:
-
-```text
-Digital Student Planner
-├── FE/                              # Frontend React + Vite + TypeScript
-├── student-planner-BE/student-planner/
-│   ├── src/main/java/com/uit/studentplanner/
-│   │   ├── config/                  # CORS, auth filter, Mongo config, ID sequence
-│   │   ├── controller/              # REST controllers
-│   │   ├── entity/                  # MongoDB document models
-│   │   ├── repository/              # Spring Data Mongo repositories
-│   │   └── service/                 # Auth, token, password services
-│   ├── src/main/resources/
-│   │   └── application.properties
-│   ├── Dockerfile
-│   └── API.md
-├── render.yaml                      # Deploy backend lên Render
-└── README.md
-```
-
-Luồng tổng quát:
-
 ```text
 Browser
-  -> React UI
+  -> React + TypeScript UI
   -> authFetch() gắn Bearer access token
   -> Spring Boot REST API
+  -> AuthContext xác định current user
+  -> Ownership validation
   -> Spring Data MongoDB
-  -> MongoDB database
+  -> MongoDB Atlas hoặc MongoDB local
 ```
 
-Frontend không truy cập database trực tiếp. Mọi thao tác thêm môn học, import lịch, lưu ghi chú, lưu bài tập đều đi qua REST API của backend.
+Frontend không truy cập MongoDB trực tiếp. Mọi thao tác đọc và ghi dữ liệu đều đi qua REST API.
+
+Backend không tin `userId` do client gửi. Danh tính người dùng được lấy từ access token và lưu trong `AuthContext` trong suốt request.
+
+### Nguyên tắc thiết kế
+
+1. **Authentication trước khi tải dữ liệu**  
+   Planner chỉ được tải khi ứng dụng đã xác nhận session hợp lệ.
+
+2. **Backend-controlled ownership**  
+   Backend tự gán `userId` cho tài nguyên mới và kiểm tra ownership với mọi thao tác đọc, sửa hoặc xóa.
+
+3. **Persistence qua MongoDB**  
+   Frontend state chỉ phục vụ hiển thị. MongoDB là nguồn dữ liệu chính.
+
+4. **Safe schedule import**  
+   Chế độ replace không xóa lịch cũ trước khi lịch mới được tạo thành công.
+
+5. **Không expose dữ liệu nhạy cảm**  
+   API không trả `passwordHash` và không cho client sửa trực tiếp role, status hoặc password hash.
+
+---
 
 ## Công Nghệ Sử Dụng
 
@@ -78,20 +144,21 @@ Frontend không truy cập database trực tiếp. Mọi thao tác thêm môn h�
 - Vite
 - CSS Modules
 - Radix UI components
-- lucide-react icons
+- lucide-react
 - date-fns
+- Fetch API
 
 Frontend nằm trong thư mục `FE`.
 
 Các file quan trọng:
 
-- `FE/src/app/App.tsx`: component gốc, xử lý khôi phục đăng nhập, hiển thị trang auth hoặc planner.
-- `FE/src/app/hooks/usePlannerState.ts`: quản lý state chính của planner.
-- `FE/src/app/lib/authApi.ts`: xử lý login/register/device session/token refresh/logout.
-- `FE/src/app/lib/plannerApi.ts`: mapping dữ liệu frontend sang backend API.
-- `FE/src/app/lib/uitSchedule.ts`: parser import lịch UIT Student và `.ics`.
-- `FE/src/app/components/planner/`: các component lịch tuần, header, notebook.
-- `FE/src/app/components/dialogs/`: dialog thêm môn, import lịch, hồ sơ người dùng.
+- `FE/src/app/App.tsx`: component gốc, xử lý restore session, guest mode và điều hướng authentication.
+- `FE/src/app/hooks/usePlannerState.ts`: quản lý state và các thao tác planner.
+- `FE/src/app/lib/authApi.ts`: register, login, refresh, logout và request có authentication.
+- `FE/src/app/lib/plannerApi.ts`: gọi planner API và mapping dữ liệu giữa frontend/backend.
+- `FE/src/app/lib/uitSchedule.ts`: parser cho UIT Student text/HTML và `.ics`.
+- `FE/src/app/components/planner/`: lịch tuần, header, deadline alerts và notebook.
+- `FE/src/app/components/dialogs/`: thêm môn, import lịch và thông tin người dùng.
 
 ### Backend
 
@@ -99,206 +166,682 @@ Các file quan trọng:
 - Spring Boot 4
 - Spring Web
 - Spring Data MongoDB
+- Bean Validation
 - Lombok
 - Springdoc OpenAPI
 - MongoDB
 - Docker
+- Maven
 
 Backend nằm trong thư mục `student-planner-BE/student-planner`.
 
-Các file quan trọng:
+Các thành phần quan trọng:
 
-- `StudentPlannerApplication.java`: entry point của Spring Boot app.
-- `AuthController.java`: API đăng ký, đăng nhập, device session, refresh token, logout, me.
-- `AccessTokenFilter.java`: filter kiểm tra `Authorization: Bearer <token>` cho các API cần bảo vệ.
-- `TokenService.java`: tạo access token, refresh token, validate token và revoke token.
-- `CrudController.java`: controller base cho CRUD chung.
-- `MongoLongIdEventListener.java`: tự tăng ID dạng `Long` cho document MongoDB.
-- `CorsConfig.java`: cấu hình CORS cho frontend.
-- `application.properties`: cấu hình server port, MongoDB URI, database, token secret.
+- `StudentPlannerApplication.java`: entry point của backend.
+- `AuthController.java`: register, login, refresh, logout, device session và current-user auth API.
+- `AccessTokenFilter.java`: đọc và validate Bearer access token.
+- `AuthContext`: lưu principal của người dùng hiện tại trong request.
+- `TokenService.java`: tạo, validate, rotate và revoke token.
+- Password service/encoder: băm và kiểm tra mật khẩu bằng PBKDF2.
+- Ownership-aware controllers/services: scope dữ liệu theo current user.
+- `MongoLongIdEventListener.java`: tạo ID kiểu `Long` cho MongoDB document.
+- Ownership migration: backfill `user_id` cho dữ liệu cũ.
+- `PlannerImportController.java`: endpoint import lịch nguyên khối.
+- `ScheduleImportService.java`: validate, staging, cleanup và replace lịch an toàn.
+- `CorsConfig.java`: cấu hình domain frontend được phép gọi backend.
+
+---
+
+## Cấu Trúc Dự Án
+
+```text
+Digital_Notebook/
+├── FE/
+│   ├── src/
+│   │   └── app/
+│   │       ├── components/
+│   │       ├── hooks/
+│   │       ├── lib/
+│   │       └── App.tsx
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── student-planner-BE/
+│   └── student-planner/
+│       ├── src/main/java/com/uit/studentplanner/
+│       │   ├── config/
+│       │   ├── controller/
+│       │   ├── dto/
+│       │   ├── entity/
+│       │   ├── repository/
+│       │   └── service/
+│       ├── src/main/resources/
+│       │   └── application.properties
+│       ├── src/test/
+│       ├── API.md
+│       ├── Dockerfile
+│       └── pom.xml
+│
+├── render.yaml
+├── .gitignore
+└── README.md
+```
+
+---
+
+## Luồng Xác Thực Và Giao Diện Khách
+
+### Khi ứng dụng khởi động
+
+```text
+App starts
+  -> đọc refresh token từ localStorage
+  -> có refresh token?
+       -> không: hiển thị guest dashboard
+       -> có: gọi POST /api/auth/refresh
+              -> thành công: lưu token mới, set current user
+              -> thất bại: xóa token, xóa current user, chuyển Sign in
+  -> chỉ tải planner khi current user hợp lệ
+```
+
+Quy tắc:
+
+- Frontend kiểm tra refresh token trước khi tải planner.
+- Session hợp lệ mới được phép gọi API planner.
+- Session hết hạn hoặc refresh thất bại sẽ:
+  - Xóa access token khỏi `sessionStorage`.
+  - Xóa refresh token khỏi `localStorage`.
+  - Xóa current user trong frontend state.
+  - Chuyển sang Sign in.
+- Không có refresh token thì frontend không tự tạo device session.
+
+### Guest dashboard
+
+Guest được xem UI tổng quan nhưng không được tải dữ liệu từ MongoDB.
+
+Khi guest thực hiện các tác vụ như:
+
+- Thêm môn học.
+- Import lịch.
+- Mở notebook.
+- Tạo hoặc sửa task.
+- Mở thông tin tài khoản cần xác thực.
+
+ứng dụng sẽ chuyển sang Sign up.
+
+### Device session
+
+Backend vẫn giữ endpoint:
+
+```text
+POST /api/auth/device-session
+```
+
+Endpoint này không còn được frontend sử dụng và không phải luồng authentication chính của ứng dụng.
+
+---
+
+## Access Token Và Refresh Token
+
+### Luồng hiện tại
+
+```text
+Login
+  -> backend trả access token + refresh token
+  -> access token lưu trong sessionStorage
+  -> refresh token lưu trong localStorage
+  -> request bảo vệ gắn Authorization: Bearer <accessToken>
+  -> backend trả 401
+       -> frontend gọi refresh
+       -> thành công: lưu cặp token mới và retry request một lần
+       -> thất bại: xóa session và yêu cầu đăng nhập lại
+```
+
+### Thời hạn mặc định
+
+- Access token: 30 phút.
+- Refresh token: 30 ngày.
+
+### Bảo vệ refresh token
+
+- Refresh token raw không được lưu trong database.
+- Backend chỉ lưu SHA-256 hash của refresh token.
+- Khi refresh thành công:
+  - Token cũ được gán `revokedAt`.
+  - Backend tạo cặp access token và refresh token mới.
+- Khi logout:
+  - Backend revoke refresh token.
+  - Frontend xóa access token và refresh token đã lưu.
+
+### Lưu trữ token ở frontend
+
+| Token | Nơi lưu | Mục đích |
+| --- | --- | --- |
+| Access token | `sessionStorage` | Gửi kèm request trong tab/session hiện tại |
+| Refresh token | `localStorage` | Khôi phục đăng nhập ở lần mở ứng dụng tiếp theo |
+
+---
+
+## Thông Tin Người Dùng Và Đổi Mật Khẩu
+
+### User information
+
+Màn hình User information là màn hình chỉ đọc, hiển thị:
+
+- Name.
+- Avatar URL.
+- Email.
+- Password đã che.
+
+Nhấn `Edit` bên cạnh Password sẽ chuyển sang màn hình Change password riêng.
+
+### Change password
+
+Các trường nhập:
+
+- Current password.
+- New password.
+- Confirm new password.
+
+Validation:
+
+- Current password phải đúng với password hash trong database.
+- New password phải có ít nhất 8 ký tự.
+- New password không được trùng Current password.
+- Confirm new password phải trùng New password.
+- Lỗi được hiển thị ngay dưới trường tương ứng.
+- Nút Save chỉ bật khi frontend validation hợp lệ.
+- Backend kiểm tra lại toàn bộ validation trước khi cập nhật.
+- Password mới được băm bằng PBKDF2 trước khi lưu.
+
+### User endpoints
+
+```text
+GET   /api/app-users/me
+PATCH /api/app-users/me/password
+GET   /api/user-profiles/me
+```
+
+Request đổi mật khẩu:
+
+```json
+{
+  "currentPassword": "old-password",
+  "newPassword": "new-password"
+}
+```
+
+Ví dụ lỗi Current password:
+
+```json
+{
+  "field": "currentPassword",
+  "message": "Current password is incorrect."
+}
+```
+
+Ví dụ lỗi New password:
+
+```json
+{
+  "field": "newPassword",
+  "message": "New password must be different from current password."
+}
+```
+
+### API đã được giới hạn
+
+`AppUser` và `UserProfile` không còn được expose qua generic CRUD.
+
+Mục đích:
+
+- Không cho client tự sửa email, role hoặc status.
+- Không cho client gửi trực tiếp `passwordHash`.
+- Không trả `passwordHash` trong response.
+- Không cho người dùng đọc profile bằng một `userId` tùy ý.
+
+---
+
+## Phân Quyền Ownership
+
+Các tài nguyên sau có trường `user_id` trong MongoDB:
+
+- `Timetable`
+- `Subject`
+- `ClassEntity`
+- `ClassSession`
+- `LessonNote`
+- `Task`
+- `ImportFile`
+- `ImportItem`
+
+### Nguyên tắc ownership
+
+1. Backend lấy `userId` từ access token thông qua `AuthContext`.
+2. Backend không tin `userId` trong URL hoặc request body.
+3. Khi tạo tài nguyên, backend tự gán current user làm owner.
+4. Nếu client gửi một owner khác, backend ghi đè bằng current user.
+5. Endpoint danh sách chỉ trả dữ liệu của current user.
+6. `GET`, `PUT`, `PATCH` và `DELETE` theo ID kiểm tra đồng thời `_id` và `user_id`.
+7. Tài nguyên không thuộc current user trả `404 Not Found`.
+
+Việc trả `404` thay vì `403` giúp không tiết lộ rằng tài nguyên của người dùng khác có tồn tại.
+
+### Kiểm tra foreign key ownership
+
+Backend kiểm tra cả ownership của tài nguyên cha:
+
+```text
+Timetable + Subject
+  -> ClassEntity
+  -> ClassSession
+  -> LessonNote / Task
+
+ImportFile
+  -> ImportItem
+```
+
+Người dùng không thể tạo tài nguyên con bằng ID của tài nguyên cha thuộc người dùng khác.
+
+### Endpoint đã loại bỏ
+
+```text
+GET /api/timetables/user/{userId}
+GET /api/subjects/user/{userId}
+GET /api/import-files/user/{userId}
+GET /api/user-profiles/user/{userId}
+```
+
+### Endpoint frontend đang sử dụng
+
+```text
+GET /api/timetables
+GET /api/subjects
+GET /api/classes
+GET /api/class-sessions
+GET /api/lesson-notes
+GET /api/tasks
+```
+
+Mỗi endpoint tự động scope dữ liệu theo access token.
+
+---
 
 ## Luồng Hoạt Động Chính
 
-### 1. Khởi động ứng dụng
+### 1. Khởi động và tải planner
 
-Khi mở frontend, `App.tsx` gọi `restoreAuthSession()`:
+```text
+App.tsx
+  -> restore authentication session
+  -> session hợp lệ?
+       -> không: guest dashboard, không tải planner
+       -> có: set current user
+              -> usePlannerState tải dữ liệu planner
+              -> backend scope dữ liệu theo access token
+```
 
-- Nếu có refresh token trong `localStorage`, frontend gọi `/api/auth/refresh`.
-- Nếu refresh thành công, user được khôi phục và planner được hiển thị.
-- Nếu không có token hoặc token hết hạn, ứng dụng hiển thị `AuthPage`.
-
-Sau khi đã có user, `usePlannerState()` gọi `getPlannerStateFromMongoDb()` để tải dữ liệu planner từ backend Spring Boot và MongoDB.
+Planner không được tải trước khi frontend hoàn tất restore session.
 
 ### 2. Thêm môn học thủ công
 
-Khi người dùng thêm môn học:
-
 ```text
 AddSubjectDialog
-  -> usePlannerState.handleAddSubject()
-  -> createCourseInMongoDb()
+  -> validate input
+  -> tạo hoặc lấy timetable hiện tại
   -> POST /api/subjects
   -> POST /api/classes
   -> POST /api/class-sessions
+  -> reload/update planner state
 ```
 
-Backend tách dữ liệu thành ba lớp:
+Backend tách dữ liệu thành:
 
-- `Subject`: thông tin môn học, mã môn, màu.
-- `ClassEntity`: lớp học gắn với môn và thời khóa biểu.
-- `ClassSession`: buổi học cụ thể gồm thứ, giờ, phòng, ngày bắt đầu/kết thúc.
+- `Subject`: thông tin môn học.
+- `ClassEntity`: liên kết môn với timetable.
+- `ClassSession`: thứ, giờ, phòng và khoảng ngày học.
 
-Cách tách này giúp một môn học có thể có nhiều lớp/buổi học khác nhau nếu mở rộng sau này.
+Backend tự gán `user_id` cho từng tài nguyên và kiểm tra ownership của `timetableId`, `subjectId` và `classId`.
 
-### 3. Import thời khóa biểu UIT
+### 3. Import lịch UIT và `.ics`
 
-Người dùng paste nội dung từ UIT Student hoặc import `.ics`. Frontend xử lý trong `uitSchedule.ts`:
+Frontend xử lý input trong `uitSchedule.ts`:
 
-- Nếu input có `BEGIN:VCALENDAR` hoặc `BEGIN:VEVENT`, parser đọc theo định dạng `.ics`.
-- Nếu là HTML/text từ bảng thời khóa biểu, parser cố gắng nhận diện header như mã môn, tên môn, thứ, phòng, tiết bắt đầu/kết thúc.
-- Tiết học UIT được map sang giờ thực tế bằng `UIT_PERIOD_SLOTS`.
-- Các dòng hợp lệ được chuyển thành `Subject`.
+- Nhận diện `.ics` qua `BEGIN:VCALENDAR` hoặc `BEGIN:VEVENT`.
+- Parse HTML/text copy từ bảng thời khóa biểu UIT Student.
+- Normalize header và chuỗi tiếng Việt.
+- Map tiết học UIT sang giờ thực tế.
+- Chuyển các dòng hợp lệ thành danh sách subject để preview.
 
-Sau đó frontend gọi:
+Luồng import mới:
 
 ```text
-importScheduleToMongoDb()
-  -> POST /api/import-files
-  -> POST /api/import-items
-  -> nếu mode = replace thì xóa lịch cũ
-  -> tạo subject/class/class-session mới
-  -> cập nhật import-file thành completed hoặc failed
+Frontend parse + preview
+  -> POST /api/planner-import
+  -> backend validate toàn bộ payload
+  -> chụp thông tin lịch hiện tại
+  -> tạo timetable/subject/class/session mới ở staging
+  -> xảy ra lỗi?
+       -> có: xóa staging, giữ nguyên lịch cũ
+       -> không: hoàn tất lịch mới, sau đó mới dọn lịch cũ nếu mode=replace
 ```
 
-### 4. Mở notebook và lưu ghi chú
+Request mẫu:
 
-Khi chọn một buổi học trên lịch:
+```json
+{
+  "mode": "replace",
+  "subjects": [
+    {
+      "name": "Mobile App Development",
+      "courseCode": "SE346",
+      "color": "#2563eb",
+      "day": 1,
+      "startTime": "07:30",
+      "endTime": "09:30",
+      "room": "A1.101",
+      "startDate": "2026-01-15",
+      "endDate": "2026-05-31"
+    }
+  ]
+}
+```
+
+Mode:
+
+- `append`: tạo thêm dữ liệu trong lịch hiện tại.
+- `replace`: tạo lịch mới đầy đủ trước, sau đó mới xóa dữ liệu lịch cũ.
+
+Các file của thay đổi local chưa commit:
+
+```text
+FE/src/app/lib/plannerApi.ts
+student-planner-BE/student-planner/src/main/java/.../PlannerImportController.java
+student-planner-BE/student-planner/src/main/java/.../ScheduleImportService.java
+student-planner-BE/student-planner/src/test/java/.../ScheduleImportServiceTests.java
+```
+
+### 4. Mở notebook
 
 ```text
 WeeklySchedule
-  -> handleOpenNotebook(subject)
-  -> GET /api/class-sessions/{sessionId}
-  -> GET /api/lesson-notes/session/{sessionId}
-  -> GET /api/tasks/session/{sessionId}
+  -> người dùng chọn một ClassSession
+  -> tải LessonNote thuộc session và current user
+  -> tải Task thuộc session và current user
+  -> hiển thị NotebookSheet
 ```
 
 Khi lưu:
 
 ```text
 NotebookSheet
-  -> handleSaveAssignment()
-  -> saveAssignmentToMongoDb()
-  -> tạo/cập nhật LessonNote
-  -> tạo/cập nhật/xóa Task tương ứng
+  -> tạo hoặc cập nhật LessonNote
+  -> tạo/cập nhật/xóa Task
+  -> MongoDB lưu dữ liệu
+  -> UI cập nhật state hiện tại
 ```
 
-Frontend dùng `Assignment` làm model UI, còn backend lưu thành:
+### 5. Deadline alerts
 
-- `LessonNote`: nội dung ghi chú bài học.
-- `Task`: từng bài tập nhỏ, deadline, trạng thái, priority.
+Frontend lọc task có:
 
-### 5. Cảnh báo deadline
+- Deadline hợp lệ.
+- Trạng thái chưa hoàn thành.
+- Deadline đã quá hạn hoặc nằm trong khoảng cảnh báo.
 
-`App.tsx` có hàm `buildDeadlineAlerts()` để lọc các bài tập:
+Các task được sắp xếp theo deadline gần nhất.
 
-- Có deadline hợp lệ.
-- Còn ít nhất một homework chưa hoàn thành.
-- Deadline trong vòng 3 ngày hoặc đã quá hạn.
-
-Kết quả được sắp xếp theo deadline gần nhất và hiển thị ở đầu planner.
+---
 
 ## Thiết Kế Dữ Liệu
 
-Backend định nghĩa các entity chính:
+| Entity | Ý nghĩa | Ownership |
+| --- | --- | --- |
+| `AppUser` | Tài khoản đăng nhập | Chính tài khoản đó |
+| `RefreshToken` | Hash refresh token và trạng thái revoke | Theo user |
+| `UserProfile` | Thông tin hiển thị của sinh viên | Theo user |
+| `Timetable` | Một thời khóa biểu | `user_id` |
+| `Subject` | Thông tin môn học | `user_id` |
+| `ClassEntity` | Liên kết Subject với Timetable | `user_id` |
+| `ClassSession` | Một buổi học cụ thể | `user_id` |
+| `LessonNote` | Ghi chú của buổi học | `user_id` |
+| `Task` | Bài tập và deadline | `user_id` |
+| `ImportFile` | Một lần import | `user_id` |
+| `ImportItem` | Dữ liệu chi tiết của lần import | `user_id` |
+| `DatabaseSequence` | Sequence tạo Long ID | Internal |
 
-| Entity | Ý nghĩa |
-| --- | --- |
-| `AppUser` | Tài khoản người dùng |
-| `RefreshToken` | Refresh token đã hash để khôi phục phiên |
-| `UserProfile` | Hồ sơ sinh viên |
-| `Timetable` | Thời khóa biểu của user |
-| `Subject` | Môn học |
-| `ClassEntity` | Lớp học thuộc môn và timetable |
-| `ClassSession` | Buổi học cụ thể trong tuần |
-| `LessonNote` | Ghi chú của một buổi học |
-| `Task` | Bài tập/deadline |
-| `ImportFile` | Lần import lịch |
-| `ImportItem` | Từng item được parse từ import |
-| `DatabaseSequence` | Bộ đếm tự tăng ID cho MongoDB |
-
-MongoDB mặc định dùng ObjectId, nhưng dự án dùng ID kiểu `Long` như `userId`, `subjectId`, `sessionId`. Vì vậy backend có `MongoLongIdEventListener` để tự động tăng ID trước khi lưu document mới.
-
-## Authentication Và Authorization
-
-Dự án dùng cơ chế access token + refresh token:
-
-- Access token là JWT ký bằng HMAC-SHA256.
-- Access token có thời gian sống ngắn, mặc định 30 phút.
-- Refresh token là opaque token random.
-- Backend không lưu refresh token raw, chỉ lưu hash SHA-256.
-- Khi refresh, token cũ bị revoke và backend cấp cặp token mới.
-- Khi logout, refresh token bị revoke.
-
-Frontend lưu token như sau:
-
-- Access token: `sessionStorage`, mất khi đóng tab/session trình duyệt.
-- Refresh token: `localStorage`, dùng để khôi phục phiên lần sau.
-- Device ID: `localStorage`, dùng cho device session.
-
-Các API public:
-
-- `GET /api/health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/device-session`
-- `POST /api/auth/refresh`
-- `POST /api/auth/logout`
-
-Các API `/api/**` còn lại yêu cầu header:
+### Quan hệ chính
 
 ```text
-Authorization: Bearer <accessToken>
+AppUser
+  -> UserProfile
+  -> Timetable
+  -> Subject
+
+Timetable + Subject
+  -> ClassEntity
+  -> ClassSession
+  -> LessonNote
+  -> Task
+
+AppUser
+  -> ImportFile
+  -> ImportItem
 ```
+
+### Long ID trong MongoDB
+
+MongoDB mặc định sử dụng ObjectId. Dự án dùng ID kiểu `Long` như:
+
+- `userId`
+- `timetableId`
+- `subjectId`
+- `classId`
+- `sessionId`
+- `noteId`
+- `taskId`
+
+`MongoLongIdEventListener` cấp ID mới trước khi document được lưu.
+
+---
 
 ## API Chính
 
-Backend có tài liệu chi tiết tại:
+Tài liệu chi tiết:
 
 ```text
 student-planner-BE/student-planner/API.md
 ```
 
-Khi backend đang chạy, có thể mở:
+Swagger UI:
 
 ```text
 http://localhost:8080/swagger-ui/index.html
 ```
 
-Một số nhóm API:
+### Health
 
-| Nhóm | Endpoint |
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| `GET` | `/api/health` | Kiểm tra backend |
+
+### Authentication
+
+| Method | Endpoint | Authentication | Mô tả |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Public | Đăng ký tài khoản |
+| `POST` | `/api/auth/login` | Public | Đăng nhập |
+| `POST` | `/api/auth/refresh` | Public | Rotate refresh token |
+| `POST` | `/api/auth/logout` | Public | Revoke refresh token |
+| `GET` | `/api/auth/me` | Bearer token | Lấy authenticated user |
+| `POST` | `/api/auth/device-session` | Public | Legacy/optional; frontend không sử dụng |
+
+### Current user
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| `GET` | `/api/app-users/me` | Lấy thông tin tài khoản hiện tại, không trả password hash |
+| `PATCH` | `/api/app-users/me/password` | Đổi mật khẩu |
+| `GET` | `/api/user-profiles/me` | Lấy profile hiện tại |
+
+### Planner resources
+
+Các endpoint danh sách tự động trả dữ liệu của current user:
+
+| Resource | Base endpoint |
 | --- | --- |
-| Health | `/api/health` |
-| Auth | `/api/auth/*` |
-| User | `/api/app-users`, `/api/user-profiles` |
-| Planner | `/api/timetables`, `/api/subjects`, `/api/classes`, `/api/class-sessions` |
-| Notebook | `/api/lesson-notes`, `/api/tasks` |
-| Import | `/api/import-files`, `/api/import-items` |
+| Timetable | `/api/timetables` |
+| Subject | `/api/subjects` |
+| Class | `/api/classes` |
+| Class session | `/api/class-sessions` |
+| Lesson note | `/api/lesson-notes` |
+| Task | `/api/tasks` |
+| Import file | `/api/import-files` |
+| Import item | `/api/import-items` |
 
-Ví dụ tạo device session:
+Các endpoint theo ID kiểm tra cả ID và owner.
+
+### Planner import
+
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| `POST` | `/api/planner-import` | Import toàn bộ lịch theo mode append hoặc replace |
+
+> Endpoint này thuộc thay đổi local chưa commit tại thời điểm cập nhật README.
+
+### Ví dụ gọi API có authentication
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/device-session \
-  -H "Content-Type: application/json" \
-  -d '{ "deviceId": "browser-device-id" }'
-```
-
-Ví dụ gọi API cần đăng nhập:
-
-```bash
-curl http://localhost:8080/api/subjects/user/1 \
+curl http://localhost:8080/api/subjects \
   -H "Authorization: Bearer <accessToken>"
 ```
+
+Không gửi `userId` để chọn owner. Backend lấy owner từ access token.
+
+---
+
+## Migration Dữ Liệu Ownership
+
+Dữ liệu cũ có thể chưa chứa `user_id` ở tất cả collection. Backend có migration chạy khi khởi động để backfill ownership theo chuỗi quan hệ.
+
+### Planner migration
+
+```text
+Timetable.user_id / Subject.user_id
+  -> ClassEntity.user_id
+  -> ClassSession.user_id
+  -> LessonNote.user_id / Task.user_id
+```
+
+### Import migration
+
+```text
+ImportFile.user_id
+  -> ImportItem.user_id
+```
+
+### Cấu hình
+
+```properties
+app.ownership-migration.enabled=true
+```
+
+Có thể tắt bằng Spring property hoặc environment variable tương ứng.
+
+Migration được tắt trong môi trường test để test độc lập và tránh thay đổi dữ liệu fixture.
+
+### MongoDB indexes
+
+Đã thêm index cho `user_id` trên các collection planner và import để tăng hiệu quả các query dạng:
+
+```text
+findByIdAndUserId(...)
+findAllByUserId(...)
+```
+
+---
+
+## Persistence
+
+MongoDB là nguồn dữ liệu chính của planner.
+
+Các dữ liệu được lưu:
+
+- Timetable.
+- Subject.
+- ClassEntity.
+- ClassSession.
+- LessonNote.
+- Task.
+- Import records.
+
+Sau khi reload hoặc đăng nhập lại:
+
+```text
+restore session
+  -> xác định current user
+  -> gọi các scoped planner endpoints
+  -> dựng lại frontend state từ MongoDB
+```
+
+Frontend không phụ thuộc vào local state để giữ dữ liệu lâu dài.
+
+Trong import replace:
+
+- Lịch cũ không bị xóa nếu quá trình tạo lịch mới thất bại.
+- Dữ liệu staging được cleanup khi có exception.
+
+---
+
+## Automated Tests
+
+### Ownership tests
+
+Các test kiểm tra:
+
+- Endpoint danh sách chỉ query dữ liệu của current user.
+- Client không thể giả mạo `userId`.
+- Người dùng không thể đọc tài nguyên của user khác.
+- Người dùng không thể sửa hoặc xóa tài nguyên của user khác.
+- Người dùng không thể sử dụng foreign key thuộc user khác.
+
+### Import reliability test
+
+Test mô phỏng database phát sinh lỗi giữa quá trình `replace` và xác nhận:
+
+- Dữ liệu staging đã tạo được cleanup.
+- Timetable cũ không bị xóa.
+- Subject cũ không bị xóa.
+
+### Kết quả hiện tại
+
+```text
+Backend tests:             6 tests, 0 failures
+Frontend production build: successful
+Backend compile:           successful
+```
+
+Lệnh kiểm tra:
+
+```bash
+cd FE
+npm run build
+```
+
+```bash
+cd student-planner-BE/student-planner
+./mvnw test
+./mvnw package
+```
+
+Trên Windows:
+
+```powershell
+.\mvnw.cmd test
+.\mvnw.cmd package
+```
+
+---
 
 ## Cách Chạy Local
 
@@ -311,28 +854,39 @@ curl http://localhost:8080/api/subjects/user/1 \
 
 ### 1. Chạy backend
 
-Đi vào thư mục backend:
-
 ```bash
 cd student-planner-BE/student-planner
 ```
 
-Tạo/cấu hình biến môi trường:
+Cấu hình environment variables:
 
-```bash
+```text
 MONGODB_URI=mongodb://localhost:27017/student-planner
 MONGODB_DATABASE=student-planner
 AUTH_TOKEN_SECRET=change-this-secret-in-real-deploy
 FRONTEND_ORIGINS=http://localhost:5173
 ```
 
-Trên Windows PowerShell có thể set tạm trong terminal:
+Bật/tắt ownership migration:
+
+```text
+APP_OWNERSHIP_MIGRATION_ENABLED=true
+```
+
+Tên environment variable thực tế có thể phụ thuộc vào cách Spring Boot map property trong môi trường deploy. Property gốc:
+
+```properties
+app.ownership-migration.enabled=true
+```
+
+PowerShell:
 
 ```powershell
 $env:MONGODB_URI="mongodb://localhost:27017/student-planner"
 $env:MONGODB_DATABASE="student-planner"
 $env:AUTH_TOKEN_SECRET="change-this-secret-in-real-deploy"
 $env:FRONTEND_ORIGINS="http://localhost:5173"
+$env:APP_OWNERSHIP_MIGRATION_ENABLED="true"
 ```
 
 Chạy backend:
@@ -341,66 +895,61 @@ Chạy backend:
 ./mvnw spring-boot:run
 ```
 
-Trên Windows:
+Windows:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Backend mặc định chạy tại:
+Backend mặc định:
 
 ```text
 http://localhost:8080
 ```
 
-Kiểm tra health:
+Health check:
 
 ```text
 http://localhost:8080/api/health
 ```
 
-### 2. Chạy frontend
+Swagger:
 
-Đi vào thư mục frontend:
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+### 2. Chạy frontend
 
 ```bash
 cd FE
-```
-
-Cài dependencies:
-
-```bash
 npm install
 ```
 
-Tạo file `.env` từ `.env.example` và chỉnh API local:
+Tạo file `.env`:
 
 ```text
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-Chạy frontend:
+Chạy development server:
 
 ```bash
 npm run dev
 ```
 
-Frontend thường chạy tại:
+Frontend mặc định:
 
 ```text
 http://localhost:5173
 ```
 
-### 3. Build kiểm tra
-
-Frontend:
+### 3. Build production
 
 ```bash
 cd FE
 npm run build
 ```
-
-Backend:
 
 ```bash
 cd student-planner-BE/student-planner
@@ -408,126 +957,150 @@ cd student-planner-BE/student-planner
 ./mvnw package
 ```
 
-Trên Windows dùng `.\mvnw.cmd` thay cho `./mvnw`.
+---
 
 ## Deploy
 
 ### Backend trên Render
 
-File `render.yaml` cấu hình service:
+File `render.yaml` dùng để cấu hình backend service.
 
-- Runtime: Docker
-- Root directory: `student-planner-BE/student-planner`
-- Health check: `/api/health`
-- Database env:
-  - `MONGODB_URI`
-  - `MONGODB_DATABASE`
-- Auth env:
-  - `AUTH_TOKEN_SECRET`
-- CORS env:
-  - `FRONTEND_ORIGINS`
+Thiết lập chính:
 
-Backend Dockerfile build bằng image Java 21:
+- Runtime: Docker.
+- Root directory: `student-planner-BE/student-planner`.
+- Health check: `/api/health`.
+- Java 21 build và runtime image.
+
+Environment variables cần thiết:
 
 ```text
-eclipse-temurin:21-jdk -> build jar
-eclipse-temurin:21-jre -> run jar
+MONGODB_URI
+MONGODB_DATABASE
+AUTH_TOKEN_SECRET
+FRONTEND_ORIGINS
+APP_OWNERSHIP_MIGRATION_ENABLED
 ```
 
 ### Frontend
 
-Frontend có thể deploy lên Vercel/Netlify/static hosting. Biến môi trường cần có:
+Frontend có thể deploy trên Vercel, Netlify hoặc static hosting khác.
+
+Biến môi trường:
 
 ```text
-VITE_API_BASE_URL=<backend-url>
+VITE_API_BASE_URL=<deployed-backend-url>
 ```
 
-Backend phải thêm domain frontend vào `FRONTEND_ORIGINS`, nếu không browser sẽ bị lỗi CORS.
+Backend phải cho phép domain frontend trong `FRONTEND_ORIGINS`.
 
-## Điểm Cần Nắm Khi Đi Phỏng Vấn
+---
 
-### 1. Giải thích dự án trong 30 giây
+## Trạng Thái Triển Khai
 
-Digital Student Planner là ứng dụng full-stack giúp sinh viên quản lý thời khóa biểu, ghi chú bài học và bài tập. Frontend dùng React/TypeScript/Vite để xây UI lịch tuần và notebook. Backend dùng Spring Boot REST API, MongoDB để lưu dữ liệu, có authentication bằng access token và refresh token. Ứng dụng còn hỗ trợ import lịch UIT Student bằng parser tự viết cho text/html và `.ics`.
+| Hạng mục | Trạng thái |
+| --- | --- |
+| Sign up / Sign in | Đã triển khai |
+| Guest dashboard | Đã triển khai |
+| Restore session bằng refresh token | Đã triển khai |
+| Access token refresh và retry một lần | Đã triển khai |
+| Logout và revoke refresh token | Đã triển khai |
+| User information read-only | Đã triển khai |
+| Change password | Đã triển khai |
+| Ownership cho planner/import resources | Đã triển khai |
+| Ownership migration | Đã triển khai |
+| Planner persistence trên MongoDB | Đã triển khai |
+| Thêm môn học thủ công | Đã triển khai |
+| Notebook, task và deadline | Đã triển khai |
+| Parser UIT Student / `.ics` | Đã xây dựng; cần tiếp tục kiểm thử dữ liệu thực tế |
+| Atomic planner import API | Đã xây dựng local, chưa commit |
+| Ownership/import automated tests | 6 tests, 0 failures |
+| Frontend production build | Thành công |
+| Backend compile/package | Thành công |
 
-### 2. Vì sao tách `Subject`, `ClassEntity`, `ClassSession`?
+### `.gitignore`
 
-Nếu chỉ lưu một object môn học gồm tên, thứ, giờ, phòng thì đơn giản nhưng khó mở rộng. Dự án tách thành:
+Repository đã thêm:
 
-- `Subject`: thông tin môn.
-- `ClassEntity`: lớp của môn trong một timetable.
-- `ClassSession`: từng buổi học cụ thể.
+```gitignore
+*.pdf
+```
 
-Cách này phù hợp nếu sau này một môn có nhiều buổi trong tuần, đổi phòng, đổi lịch theo tuần hoặc có nhiều timetable.
+Các file proposal PDF không được Git theo dõi.
 
-### 3. Vì sao dùng access token và refresh token?
+---
 
-Access token sống ngắn để giảm rủi ro nếu bị lộ. Refresh token sống lâu hơn để người dùng không phải đăng nhập lại liên tục. Backend lưu hash của refresh token thay vì token raw, nên nếu database bị lộ thì attacker không dùng trực tiếp refresh token được. Khi refresh, token cũ bị revoke để giảm nguy cơ replay.
+## Điểm Cần Nắm Khi Phỏng Vấn
 
-### 4. `AccessTokenFilter` làm gì?
-
-`AccessTokenFilter` chạy trước controller. Nó bỏ qua các route public như health, login, register, refresh. Với các API còn lại, filter đọc header `Authorization`, validate JWT bằng `TokenService`, rồi lưu principal vào `AuthContext`. Controller có thể dùng `AuthContext.require()` để biết user hiện tại.
-
-### 5. Frontend xử lý tự refresh token như thế nào?
-
-Frontend gọi API qua `authFetch()`. Hàm này đảm bảo có session, gắn access token vào header. Nếu backend trả `401`, frontend xóa access token, thử refresh hoặc tạo device session mới, rồi retry request một lần.
-
-### 6. Import lịch UIT có gì đáng nói?
-
-Parser trong `uitSchedule.ts` xử lý nhiều dạng input:
-
-- `.ics` calendar event.
-- HTML table copy từ web.
-- Text có tab, dấu `|`, hoặc nhiều khoảng trắng.
-
-Parser normalize tiếng Việt không dấu để nhận diện header, map tiết học UIT sang giờ thật, lọc trùng bằng ID sinh từ môn/ngày/giờ/phòng, và trả warning nếu có trường hợp chưa hỗ trợ đầy đủ như lịch cách tuần.
-
-### 7. MongoDB tự tăng ID như thế nào?
-
-MongoDB thường dùng ObjectId. Dự án dùng `Long` ID để API dễ đọc hơn. `MongoLongIdEventListener` lắng nghe sự kiện `BeforeConvert`; nếu entity có field `@Id Long` đang null, nó tăng sequence trong collection `database_sequences` rồi gán ID mới trước khi lưu.
-
-### 8. Điểm mạnh của dự án
-
-- Có kiến trúc full-stack rõ ràng.
-- Có auth flow tương đối đầy đủ: register, login, device session, refresh, logout.
-- Có parser import lịch thực tế, không chỉ CRUD đơn giản.
-- Có OpenAPI/Swagger để test API.
-- Có Dockerfile và render config để deploy backend.
-- Frontend tách logic state/API/parser/component khá rõ.
-
-### 9. Điểm có thể cải thiện nếu bị hỏi
-
-- Có thể đổi tên các hàm `*MongoDb` trong frontend thành tên trung lập hơn như `getPlannerStateFromApi` nếu sau này muốn tách UI khỏi chi tiết database.
-- Thêm test cho parser import lịch UIT.
-- Thêm test integration cho auth flow.
-- Thêm phân quyền theo user ở backend để đảm bảo user chỉ truy cập dữ liệu của chính mình.
-- Chuẩn hóa enum status/priority giữa frontend và backend.
-- Thêm validation DTO thay vì nhận trực tiếp entity ở controller.
-- Xử lý cascade delete rõ hơn khi xóa subject/timetable để tránh dữ liệu liên quan bị mồ côi.
-
-### 10. Câu trả lời mẫu khi được hỏi "Bạn đóng góp gì?"
-
-Bạn có thể nói:
+### 1. Giới thiệu dự án trong 30 giây
 
 ```text
-Em xây dựng ứng dụng Digital Student Planner theo mô hình full-stack.
-Ở frontend, em xử lý UI lịch tuần, notebook, deadline alert, import lịch UIT và luồng gọi API có tự refresh token.
-Ở backend, em xây REST API bằng Spring Boot, lưu dữ liệu bằng MongoDB, thiết kế các entity cho timetable/subject/session/note/task, và xây cơ chế authentication bằng access token + refresh token.
-Em cũng cấu hình Swagger, Dockerfile và Render để có thể deploy backend.
+Digital Student Planner là ứng dụng full-stack giúp sinh viên quản lý thời khóa biểu,
+ghi chú bài học, bài tập và deadline theo từng buổi học. Frontend được xây bằng
+React và TypeScript, backend dùng Spring Boot REST API và MongoDB. Em xây luồng
+đăng ký, đăng nhập bằng access token và refresh token, phân quyền dữ liệu theo
+người dùng, persistence sau khi reload và parser để import lịch UIT Student hoặc
+file .ics.
 ```
 
-### 11. Câu trả lời mẫu khi được hỏi "Khó khăn lớn nhất là gì?"
+### 2. Vì sao guest vẫn thấy dashboard?
+
+Guest dashboard giúp người dùng xem trước giao diện và giá trị của ứng dụng mà chưa cần đăng ký. Tuy nhiên frontend không tải dữ liệu planner và mọi thao tác thay đổi dữ liệu đều yêu cầu authentication.
+
+### 3. Vì sao bỏ auto device session?
+
+Auto device session khiến ứng dụng âm thầm tạo một user tạm khi người dùng chưa đăng nhập, làm luồng authentication khó hiểu và có thể tạo dữ liệu không mong muốn. Frontend hiện yêu cầu Sign up hoặc Sign in rõ ràng. Backend chỉ giữ endpoint để tương thích hoặc phục vụ mục đích riêng.
+
+### 4. Vì sao dùng access token và refresh token?
+
+Access token sống ngắn để giảm rủi ro khi bị lộ. Refresh token giúp người dùng duy trì đăng nhập nhưng được rotate sau mỗi lần sử dụng. Backend chỉ lưu SHA-256 hash của refresh token, do đó token raw không xuất hiện trong database.
+
+### 5. Ownership được bảo vệ như thế nào?
+
+Backend lấy user hiện tại từ access token, không dùng `userId` do client cung cấp. Mọi query theo ID đều kèm `user_id`. Khi tạo tài nguyên con, backend cũng kiểm tra tài nguyên cha thuộc current user. Vì vậy người dùng không thể đoán ID để đọc hoặc gắn dữ liệu vào tài khoản khác.
+
+### 6. Vì sao tài nguyên của user khác trả 404?
+
+Trả `404 Not Found` tránh tiết lộ tài nguyên đó có tồn tại. Đây là cách giảm information disclosure so với việc trả `403 Forbidden` cho một ID hợp lệ của người dùng khác.
+
+### 7. Vì sao không dùng generic CRUD cho AppUser?
+
+Generic CRUD có thể cho client gửi `passwordHash`, sửa role/status hoặc đọc dữ liệu nhạy cảm. API current-user `/me` giới hạn đúng những thao tác người dùng được phép thực hiện.
+
+### 8. Import replace trước đây có vấn đề gì?
+
+Luồng cũ xóa lịch trước rồi tạo lịch mới qua nhiều request. Nếu một request lỗi giữa chừng, người dùng có thể mất lịch cũ và chỉ còn dữ liệu dang dở.
+
+Luồng mới gửi toàn bộ lịch trong một request, validate trước, tạo dữ liệu mới ở staging và chỉ dọn lịch cũ sau khi lịch mới hoàn chỉnh.
+
+### 9. Persistence được đảm bảo như thế nào?
+
+MongoDB là source of truth. Sau khi session được khôi phục, frontend gọi các API đã scope theo user và dựng lại state. Vì vậy refresh trang không làm mất môn học, ghi chú hoặc task.
+
+### 10. Khó khăn kỹ thuật đáng nói nhất
 
 ```text
-Khó nhất là import thời khóa biểu vì dữ liệu copy từ UIT Student có thể ở nhiều dạng: HTML table, text, hoặc file .ics. Em giải quyết bằng cách normalize input, nhận diện header linh hoạt, map tiết học sang giờ thật, tạo ID chống trùng, và trả warnings cho các trường hợp chưa hỗ trợ hoàn toàn như lịch cách tuần.
+Hai phần khó nhất là ownership và import lịch an toàn. Với ownership, em phải bảo
+đảm không chỉ tài nguyên chính mà cả foreign key đều thuộc người dùng hiện tại.
+Với import, em thay đổi từ nhiều request dễ mất dữ liệu sang một service import
+nguyên khối có staging và cleanup khi lỗi.
 ```
 
-### 12. Câu trả lời mẫu khi được hỏi "Nếu làm lại bạn cải thiện gì?"
+### 11. Điểm có thể tiếp tục cải thiện
 
-```text
-Em sẽ ưu tiên thêm test cho parser và auth flow, đổi tên các hàm API ở frontend cho đúng database hiện tại, thêm DTO validation ở backend, và kiểm tra ownership theo user cho từng resource để tăng bảo mật.
-```
+- Commit và tích hợp hoàn chỉnh atomic planner import.
+- Bổ sung test parser với nhiều file `.ics` và dữ liệu UIT Student thực tế.
+- Bổ sung integration test đầy đủ cho register/login/refresh/logout/change password.
+- Chuẩn hóa error response toàn backend.
+- Thêm rate limiting cho login và change password.
+- Cân nhắc HttpOnly cookie cho refresh token trong phiên bản production yêu cầu bảo mật cao hơn.
+- Bổ sung CI để tự động chạy frontend build và backend tests khi push code.
+
+---
 
 ## Ghi Chú
 
-Tài liệu API chi tiết nằm ở `student-planner-BE/student-planner/API.md`. README này tập trung giải thích toàn dự án và các điểm kỹ thuật quan trọng để dễ học lại trước phỏng vấn.
+Chi tiết request/response của từng endpoint nên được duy trì trong:
+
+```text
+student-planner-BE/student-planner/API.md
