@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FileText, Info, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Archive, FileText, Info, Upload } from "lucide-react";
 
 import { parseUITScheduleInput, UITScheduleImportResult } from "../../lib/uitSchedule";
 import { Button } from "../ui/button";
@@ -38,6 +38,33 @@ export function ImportUITScheduleDialog({
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const preview = parseUITScheduleInput({ text: rawText, html: clipboardHtml });
+  const dateSummary = useMemo(() => {
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    const expired = preview.subjects.filter(
+      (subject) => Boolean(subject.endDate) && subject.endDate! < today,
+    ).length;
+    const upcoming = preview.subjects.filter(
+      (subject) => Boolean(subject.startDate) && subject.startDate! > today,
+    ).length;
+
+    return {
+      expired,
+      upcoming,
+      current: preview.subjects.length - expired - upcoming,
+      allExpired: preview.subjects.length > 0 && expired === preview.subjects.length,
+    };
+  }, [preview.subjects]);
+
+  useEffect(() => {
+    if (dateSummary.allExpired) {
+      setReplaceExisting(false);
+    }
+  }, [dateSummary.allExpired]);
 
   const handleClose = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -91,7 +118,18 @@ export function ImportUITScheduleDialog({
       return;
     }
 
-    onImport(result, replaceExisting ? "replace" : "append", rawText);
+    const importAsHistory = result.subjects.every((subject) => {
+      if (!subject.endDate) return false;
+      const now = new Date();
+      const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-");
+      return subject.endDate < today;
+    });
+
+    onImport(result, importAsHistory ? "append" : replaceExisting ? "replace" : "append", rawText);
     handleClose(false);
   };
 
@@ -173,11 +211,14 @@ export function ImportUITScheduleDialog({
                 checked={replaceExisting}
                 onCheckedChange={(checked) => setReplaceExisting(Boolean(checked))}
                 className={styles.checkbox}
+                disabled={dateSummary.allExpired}
               />
               <div>
                 <Label className={styles.modeLabel}>Replace the current schedule</Label>
                 <p className={styles.modeText}>
-                  Turn this off if you want to append the imported classes instead.
+                  {dateSummary.allExpired
+                    ? "Expired schedules are added as history and cannot replace your current schedule."
+                    : "Turn this off if you want to append the imported classes instead."}
                 </p>
               </div>
             </div>
@@ -186,6 +227,24 @@ export function ImportUITScheduleDialog({
               <div className={styles.previewTitle}>
                 Preview: {preview.subjects.length} classes will be imported
               </div>
+
+              {dateSummary.allExpired ? (
+                <div className={styles.historyWarning} role="alert">
+                  <Archive className="size-4" />
+                  <div>
+                    <p className={styles.historyWarningTitle}>Historical schedule detected</p>
+                    <p>
+                      All {dateSummary.expired} classes have ended. They will be appended as history
+                      and remain available when you navigate back to their original weeks.
+                    </p>
+                  </div>
+                </div>
+              ) : dateSummary.expired > 0 ? (
+                <div className={styles.mixedDateWarning} role="status">
+                  {dateSummary.expired} expired, {dateSummary.current} current, and {dateSummary.upcoming}{" "}
+                  upcoming classes were detected. Review the preview before importing.
+                </div>
+              ) : null}
 
               {preview.subjects.length > 0 ? (
                 <div className={styles.previewChips}>
@@ -218,8 +277,12 @@ export function ImportUITScheduleDialog({
             <Button variant="outline" onClick={() => handleClose(false)} className={styles.cancelButton}>
               Cancel
             </Button>
-            <Button onClick={handleImport} className={styles.submitButton}>
-              Import schedule
+            <Button
+              onClick={handleImport}
+              className={styles.submitButton}
+              disabled={!preview.subjects.length}
+            >
+              {dateSummary.allExpired ? "Import historical schedule" : "Import schedule"}
             </Button>
           </DialogFooter>
         </div>

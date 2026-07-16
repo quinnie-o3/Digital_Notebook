@@ -17,6 +17,8 @@ import com.uit.studentplanner.repository.TaskRepository;
 import com.uit.studentplanner.repository.TimetableRepository;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -117,6 +119,17 @@ public class ScheduleImportService {
             } catch (RuntimeException error) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Class time is invalid");
             }
+        }
+
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        boolean allExpired = request.subjects().stream().allMatch(
+                item -> item.endDate() != null && item.endDate().isBefore(today)
+        );
+        if ("replace".equals(request.mode()) && allExpired) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "An expired schedule can only be imported in append mode"
+            );
         }
     }
 

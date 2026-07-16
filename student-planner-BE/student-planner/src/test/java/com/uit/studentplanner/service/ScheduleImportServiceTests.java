@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.uit.studentplanner.config.AuthContext;
@@ -23,6 +24,7 @@ import com.uit.studentplanner.repository.SubjectRepository;
 import com.uit.studentplanner.repository.TaskRepository;
 import com.uit.studentplanner.repository.TimetableRepository;
 import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -107,5 +109,24 @@ class ScheduleImportServiceTests {
         verify(subjectRepository, never()).deleteAll(List.of(oldSubject));
         verify(timetableRepository).deleteAll(any(List.class));
         verify(subjectRepository).deleteAll(any(List.class));
+    }
+
+    @Test
+    void expiredScheduleCannotReplaceCurrentSchedule() {
+        ScheduleImportRequest request = new ScheduleImportRequest(
+                "replace",
+                List.of(new ScheduleItemRequest(
+                        "Old course", "OLD01", "#ffffff", 1,
+                        "08:00", "09:00", "A1",
+                        LocalDate.now().minusMonths(4), LocalDate.now().minusMonths(1)
+                ))
+        );
+
+        assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> service.importSchedule(request)
+        );
+
+        verifyNoInteractions(mongoTemplate, timetableRepository, subjectRepository, classRepository);
     }
 }

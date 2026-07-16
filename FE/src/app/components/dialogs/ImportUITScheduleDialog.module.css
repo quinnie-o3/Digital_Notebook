@@ -97,6 +97,22 @@
   @apply font-semibold;
 }
 
+.historyWarning {
+  @apply mt-3 flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900;
+}
+
+.historyWarning svg {
+  @apply mt-0.5 shrink-0;
+}
+
+.historyWarningTitle {
+  @apply font-semibold;
+}
+
+.mixedDateWarning {
+  @apply mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900;
+}
+
 .previewChips {
   @apply mt-2 flex flex-wrap gap-2;
 }
